@@ -1,4 +1,5 @@
 ﻿using FleksProfitAPI.Data;
+using FleksProfitAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -16,32 +17,48 @@ namespace FleksProfitAPI.Services
         }
 
         /// <summary>
-        /// Beregn total revenue for en given kapacitet (MW) og tidsperiode.
+        /// Beregn månedlig revenue baseret på sidste hele måned.
+        /// Hvis HourStart og HourEnd er angivet, beregnes kun for de timer.
         /// </summary>
-        public async Task<double> CalculateRevenueAsync(double capacityMW, DateTime start, DateTime end)
+        public async Task<RevenueResult> CalculateRevenueAsync(RevenueRequest request)
         {
-            var records = await _db.FcrRecords
-                .Where(r => r.HourUTC >= start && r.HourUTC < end)
-                .ToListAsync();
+            var today = DateTime.UtcNow;
+            var lastMonth = today.AddMonths(-1);
+            var startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            double totalRevenue = records.Sum(r => r.FCRdk_DKK.GetValueOrDefault() * capacityMW);
+            var query = _db.FcrRecords
+                .Where(r => r.HourUTC.Date >= startDate && r.HourUTC.Date <= endDate);
 
-            return totalRevenue;
-        }
+            // Filtrér på specifikke timer, hvis sat
+            if (request.HourStart.HasValue && request.HourEnd.HasValue)
+            {
+                int hStart = request.HourStart.Value;
+                int hEnd = request.HourEnd.Value;
+                query = query.Where(r => r.HourDK.Hour >= hStart && r.HourDK.Hour < hEnd);
+            }
 
-        /// <summary>
-        /// Beregn gennemsnitspris for et specifikt timeinterval fx 12-16 hver dag i perioden.
-        /// </summary>
-        public async Task<double> CalculateRevenueForHoursAsync(double capacityMW, DateTime start, DateTime end, int hourStart, int hourEnd)
-        {
-            var records = await _db.FcrRecords
-                .Where(r => r.HourUTC >= start && r.HourUTC < end)
-                .Where(r => r.HourDK.Hour >= hourStart && r.HourDK.Hour < hourEnd)
-                .ToListAsync();
+            var records = await query.ToListAsync();
 
-            double totalRevenue = records.Sum(r => r.FCRdk_DKK.GetValueOrDefault() * capacityMW);
+            if (!records.Any())
+                return new RevenueResult { AveragePriceDKKPerMWHour = 0, MonthlyRevenueDKK = 0 };
 
-            return totalRevenue;
+            // Gennemsnit pr. dag
+            var dailyAverages = records
+                .GroupBy(r => r.HourUTC.Date)
+                .Select(g => g.Average(r => r.FCRdk_DKK ?? 0))
+                .ToList();
+
+            var averagePricePerMWPerHour = dailyAverages.Average();
+
+            var capacityMW = request.CapacityKW / 1000.0;
+            var monthlyRevenue = averagePricePerMWPerHour * capacityMW * request.HoursPerDay * request.DaysPerMonth;
+
+            return new RevenueResult
+            {
+                AveragePriceDKKPerMWHour = averagePricePerMWPerHour,
+                MonthlyRevenueDKK = monthlyRevenue
+            };
         }
     }
 }

@@ -2,7 +2,7 @@
 {
     public class RevenueResult
     {
-        public double AveragePriceDKKPerMWHour { get; set; } // Gennemsnitspris pr. MW/time
-        public double MonthlyRevenueDKK { get; set; }        // Estimeret månedlig revenue
+        public double AveragePriceDKKPerMWHour { get; set; } // Gennemsnitlig pris pr. MW pr. time i DKK
+        public double MonthlyRevenueDKK { get; set; }        // Beregnet månedlig revenue for den angivne kapacitet og tidsperiode
     }
 }
