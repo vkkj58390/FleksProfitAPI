@@ -44,42 +44,5 @@ namespace FleksProfitAPI.Services
 
             return freshData.Count;
         }
-
-        /// <summary>
-        /// Henter FCR-data pagineret og filtreret efter dato (valgfrit).
-        /// </summary>
-        public async Task<PagedResult<FcrRecord>> GetPagedAsync(
-            DateTime? start = null,
-            DateTime? end = null,
-            int page = 1,
-            int pageSize = 500)
-        {
-            if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 500;
-
-            var query = _db.FcrRecords.AsQueryable();
-
-            // 🔹 Filtrér på datointerval hvis angivet
-            if (start.HasValue)
-                query = query.Where(r => r.HourUTC >= start.Value);
-            if (end.HasValue)
-                query = query.Where(r => r.HourUTC < end.Value);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderBy(r => r.HourUTC)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return new PagedResult<FcrRecord>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                Page = page,
-                PageSize = pageSize
-            };
-        }
     }
 }
