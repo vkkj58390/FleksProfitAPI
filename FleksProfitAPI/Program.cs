@@ -10,7 +10,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Register services
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<FcrService>(); // <-- vigtig! Denne skal bruges, ikke EnergiNetBaseService direkte
+builder.Services.AddScoped<FcrDataService>(); // <-- vigtig! Denne skal bruges, ikke EnergiNetBaseService direkte
 builder.Services.AddHostedService<EnergiNetSyncBackgroundService>();
 
 

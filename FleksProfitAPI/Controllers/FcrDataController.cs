@@ -6,11 +6,11 @@ namespace FleksProfitAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class FcrController : ControllerBase
+    public class FcrDataController : ControllerBase
     {
-        private readonly FcrService _fcrService;
+        private readonly FcrDataService _fcrService;
 
-        public FcrController(FcrService fcrService)
+        public FcrDataController(FcrDataService fcrService)
         {
             _fcrService = fcrService;
         }

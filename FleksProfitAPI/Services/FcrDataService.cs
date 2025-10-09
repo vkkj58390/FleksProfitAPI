@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleksProfitAPI.Services
 {
-    public class FcrService : EnergiNetBaseService
+    public class FcrDataService : EnergiNetBaseService
     {
         private readonly AppDbContext _db;
 
-        public FcrService(HttpClient httpClient, AppDbContext db) : base(httpClient)
+        public FcrDataService(HttpClient httpClient, AppDbContext db) : base(httpClient)
         {
             _db = db;
         }
