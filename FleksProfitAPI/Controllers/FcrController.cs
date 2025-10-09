@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using FleksProfitAPI.Models;
 using FleksProfitAPI.Services;
 
 namespace FleksProfitAPI.Controllers
@@ -14,14 +15,10 @@ namespace FleksProfitAPI.Controllers
             _fcrService = fcrService;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetPaged(
-            [FromQuery] DateTime? start = null,
-            [FromQuery] DateTime? end = null,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 500)
+        [HttpPost("calculate")]
+        public async Task<IActionResult> CalculateRevenue([FromBody] RevenueRequest request)
         {
-            var result = await _fcrService.GetPagedAsync(start, end, page, pageSize);
+            var result = await _fcrService.CalculateMonthlyRevenueAsync(request);
             return Ok(result);
         }
     }
