@@ -26,11 +26,22 @@ namespace FleksProfitAPI.Controllers
             if (request.HoursPerDay <= 0) return BadRequest("HoursPerDay must be > 0.");
             if (request.DaysPerMonth <= 0) return BadRequest("DaysPerMonth must be > 0.");
 
-            if (request.HourStart.HasValue && request.HourEnd.HasValue)
+            // Treat 0/0 as "no hour range provided" for better UX in Swagger
+            var hasHourRange =
+                request.HourStart.HasValue && request.HourEnd.HasValue &&
+                !(request.HourStart == 0 && request.HourEnd == 0);
+
+            if (hasHourRange)
             {
                 if (request.HourStart < 0 || request.HourStart > 23 ||
                     request.HourEnd <= request.HourStart || request.HourEnd > 24)
                     return BadRequest("Invalid hour range.");
+            }
+            else
+            {
+                // Normalize 0/0 to null so downstream logic ignores hour filtering
+                request.HourStart = null;
+                request.HourEnd = null;
             }
 
             var result = await _revenueService.CalculateRevenueAsync(request);
