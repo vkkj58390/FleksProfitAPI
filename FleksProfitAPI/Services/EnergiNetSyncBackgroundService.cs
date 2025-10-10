@@ -29,7 +29,7 @@ namespace FleksProfitAPI.Services
                 {
                     using var scope = _services.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    var fcrService = scope.ServiceProvider.GetRequiredService<FcrService>();
+                    var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
                     // senere kan man tilføje flere:
                     // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
 
@@ -52,7 +52,7 @@ namespace FleksProfitAPI.Services
             _logger.LogInformation("EnergiNet Sync baggrundsservice stoppet.");
         }
 
-        private async Task SyncDatasetAsync(string name, AppDbContext db, FcrService service, CancellationToken stoppingToken)
+        private async Task SyncDatasetAsync(string name, AppDbContext db, FcrDataService service, CancellationToken stoppingToken)
         {
             _logger.LogInformation("Starter synkronisering for {Dataset}", name);
 
