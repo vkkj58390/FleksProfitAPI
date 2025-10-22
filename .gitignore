@@ -417,7 +417,10 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# Database fil SQLite
+# Ignore SQLite database and temp files
 *.db
-*.sqlite
+*.db-shm
+*.db-wal
 Data/*.db
+Data/*.db-shm
+Data/*.db-wal
