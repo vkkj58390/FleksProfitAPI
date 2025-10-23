@@ -19,6 +19,7 @@ namespace FleksProfitAPI.Services
         /// <summary>
         /// Beregn månedlig revenue baseret på sidste hele måned.
         /// Hvis HourStart og HourEnd er angivet, beregnes kun for de timer.
+        /// 0/0 tolkes som "ingen timefiltrering".
         /// </summary>
         public async Task<RevenueResult> CalculateRevenueAsync(RevenueRequest request)
         {
@@ -30,11 +31,15 @@ namespace FleksProfitAPI.Services
             var query = _db.FcrRecords
                 .Where(r => r.HourUTC.Date >= startDate && r.HourUTC.Date <= endDate);
 
-            // Filtrér på specifikke timer, hvis sat
-            if (request.HourStart.HasValue && request.HourEnd.HasValue)
+            // Apply hour filtering only when a real range is provided (exclude 0/0)
+            var hasHourRange =
+                request.HourStart.HasValue && request.HourEnd.HasValue &&
+                !(request.HourStart == 0 && request.HourEnd == 0);
+
+            if (hasHourRange)
             {
-                int hStart = request.HourStart.Value;
-                int hEnd = request.HourEnd.Value;
+                var hStart = request.HourStart!.Value;
+                var hEnd = request.HourEnd!.Value;
                 query = query.Where(r => r.HourDK.Hour >= hStart && r.HourDK.Hour < hEnd);
             }
 

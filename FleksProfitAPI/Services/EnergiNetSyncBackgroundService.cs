@@ -74,7 +74,7 @@ namespace FleksProfitAPI.Services
                 _logger.LogInformation("Henter nyt {Dataset}-data fra {Start} til {End}", name, start, end);
             }
 
-            var addedCount = await service.SyncFcrDataAsync(start, end);
+            var addedCount = await service.SyncFcrDataAsync(start, end, stoppingToken);
             _logger.LogInformation("{Dataset} synk færdig - {Count} nye rækker tilføjet.", name, addedCount);
         }
     }

@@ -17,15 +17,18 @@ namespace FleksProfitAPI.Services
         /// Synkroniserer FCR-data fra EnergiNet for perioden [start, end].
         /// Returnerer antal nye rækker indsat i databasen.
         /// </summary>
-        public async Task<int> SyncFcrDataAsync(DateTime start, DateTime end)
+        public async Task<int> SyncFcrDataAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
-            var newData = await FetchDataAsync<FcrRecord>("FcrDK1", start, end);
+            var newData = await FetchDataAsync<FcrRecord>("FcrDK1", start, end, cancellationToken);
             if (newData == null || !newData.Any())
                 return 0;
 
+            // Only load existing hours in the requested window to avoid scanning the whole table
             var existingHours = await _db.FcrRecords
+                .AsNoTracking()
+                .Where(r => r.HourUTC >= start && r.HourUTC <= end)
                 .Select(r => r.HourUTC)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             var freshData = newData
                 .Where(d => !existingHours.Contains(d.HourUTC))
@@ -34,7 +37,7 @@ namespace FleksProfitAPI.Services
             if (freshData.Any())
             {
                 _db.FcrRecords.AddRange(freshData);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
 
             return freshData.Count;
