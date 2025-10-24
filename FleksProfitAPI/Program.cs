@@ -4,9 +4,21 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DbContext with connection string from appsettings.json
+// Resolve relative DB path from config to an absolute path under the content root
+var relConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=App_Data/fcr.db";
+var contentRoot = builder.Environment.ContentRootPath;
+var dataSourcePrefix = "Data Source=";
+var relPath = relConn.StartsWith(dataSourcePrefix, StringComparison.OrdinalIgnoreCase)
+    ? relConn.Substring(dataSourcePrefix.Length)
+    : relConn;
+
+var dbPath = Path.GetFullPath(Path.Combine(contentRoot, relPath));
+Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
+// Log and use the resolved absolute path
+builder.Logging.AddConsole();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite($"{dataSourcePrefix}{dbPath}"));
 
 // Register services
 builder.Services.AddHttpClient();
@@ -24,10 +36,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
 
