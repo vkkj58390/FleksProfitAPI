@@ -16,7 +16,7 @@ namespace FleksProfitAPI.Services
 
         protected async Task<List<T>> FetchDataAsync<T>(string datasetName, DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
-            // Page through the Energi Data Service API. limit=0 returns 0 rows.
+            // Page through the Energi Data Service API.
             const int pageSize = 10000;
             var offset = 0;
             var all = new List<T>();
