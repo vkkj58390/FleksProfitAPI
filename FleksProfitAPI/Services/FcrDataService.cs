@@ -32,6 +32,7 @@ namespace FleksProfitAPI.Services
 
             var freshData = newData
                 .Where(d => !existingHours.Contains(d.HourUTC))
+                .OrderBy(d => d.HourUTC) // ensure oldest are inserted first → lowest Ids
                 .ToList();
 
             if (freshData.Any())
