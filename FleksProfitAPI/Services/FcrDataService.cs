@@ -1,46 +1,39 @@
 ﻿using FleksProfitAPI.Data;
 using FleksProfitAPI.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace FleksProfitAPI.Services
 {
     public class FcrDataService : EnergiNetBaseService
     {
-        private readonly AppDbContext _db;
+        private readonly QuestDbRepository _repo;
 
-        public FcrDataService(HttpClient httpClient, AppDbContext db) : base(httpClient)
+        public FcrDataService(HttpClient httpClient, QuestDbRepository repo) : base(httpClient)
         {
-            _db = db;
+            _repo = repo;
         }
 
-        /// <summary>
-        /// Synkroniserer FCR-data fra EnergiNet for perioden [start, end].
-        /// Returnerer antal nye rækker indsat i databasen.
-        /// </summary>
         public async Task<int> SyncFcrDataAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
             var newData = await FetchDataAsync<FcrRecord>("FcrDK1", start, end, cancellationToken);
             if (newData == null || !newData.Any())
                 return 0;
 
-            // Only load existing hours in the requested window to avoid scanning the whole table
-            var existingHours = await _db.FcrRecords
-                .AsNoTracking()
-                .Where(r => r.HourUTC >= start && r.HourUTC <= end)
-                .Select(r => r.HourUTC)
-                .ToListAsync(cancellationToken);
+            // Repository expects 'timestamp' params (Unspecified kind)
+            var existing = await _repo.GetFcrRecordsAsync(
+                DateTime.SpecifyKind(start, DateTimeKind.Unspecified),
+                DateTime.SpecifyKind(end,   DateTimeKind.Unspecified),
+                cancellationToken);
+
+            var existingTicks = existing.Select(r => r.HourUTC.Ticks).ToHashSet();
 
             var freshData = newData
-                .Where(d => !existingHours.Contains(d.HourUTC))
+                .Where(d => !existingTicks.Contains(d.HourUTC.Ticks))
                 .ToList();
 
-            if (freshData.Any())
-            {
-                _db.FcrRecords.AddRange(freshData);
-                await _db.SaveChangesAsync(cancellationToken);
-            }
+            if (freshData.Count == 0)
+                return 0;
 
-            return freshData.Count;
+            return await _repo.InsertFcrRecordsAsync(freshData, cancellationToken);
         }
     }
 }
