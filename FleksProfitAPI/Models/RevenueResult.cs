@@ -2,10 +2,10 @@
 {
     public class RevenueResult
     {
-        public double AveragePriceDKKPerMWHour { get; set; } // Gennemsnitlig pris pr. MW pr. time i DKK
-        public double MonthlyRevenueDKK { get; set; }        // Beregnet månedlig revenue for den angivne kapacitet og tidsperiode
+        /// <summary>Gennemsnitlig pris pr. MW pr. time i DKK (beregnet for de udvalgte timer per døgn; ved 0/0 er det døgn-gennemsnittet over 24 timer)</summary>
+        public double AveragePriceDKKPerMWHour { get; set; }
 
-        // Beregnet antal timer pr. dag ud fra timeintervallet
-        public int HoursPerDayCalculated { get; set; }
+        /// <summary>Beregnede månedlige indtægter for den angivne kapacitet, ud fra HoursPerDay og DaysPerMonth</summary>
+        public double MonthlyRevenueDKK { get; set; }
     }
 }

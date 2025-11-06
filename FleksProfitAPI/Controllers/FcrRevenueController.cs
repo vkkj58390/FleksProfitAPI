@@ -23,32 +23,41 @@ namespace FleksProfitAPI.Controllers
         [HttpPost("calculate")]
         public async Task<IActionResult> CalculateRevenue([FromBody] RevenueRequest request)
         {
-            if (request.CapacityKW <= 0) return BadRequest("Capacity must be > 0.");
+            if (request.CapacityKW <= 0) return BadRequest("CapacityKW must be > 0.");
             if (request.DaysPerMonth <= 0) return BadRequest("DaysPerMonth must be > 0.");
+            if (request.HoursPerDay <= 0 || request.HoursPerDay > 24)
+                return BadRequest("HoursPerDay must be in [1,24].");
 
-            // Timeinterval kræves (tillad 0/0 = hele døgnet)
+            // Timeinterval (tillad 0/0 = gennemsnits timepris over hele døgnet)
             if (!request.HourStart.HasValue || !request.HourEnd.HasValue)
-                return BadRequest("HourStart and HourEnd are required. Use 0/0 for full day.");
+                return BadRequest("HourStart and HourEnd are required. Use 0/0 for a 24-hour full-day average.");
 
             var start = request.HourStart.Value;
             var end = request.HourEnd.Value;
 
-            // Valider grænser: start 0..23, end 0..24 (end==0 kun hvis 0/0)
             if (start < 0 || start > 23) return BadRequest("HourStart must be in [0,23].");
             if (end < 0 || end > 24) return BadRequest("HourEnd must be in [0,24].");
 
-            // 0/0 = hele døgnet
             var isFullDay = (start == 0 && end == 0);
             if (!isFullDay)
             {
                 // start == end => 0 timer (ikke gyldigt)
                 if (start == end)
-                    return BadRequest("HourStart and HourEnd cannot be equal unless both are 0 (0/0 = full day).");
+                    return BadRequest("HourStart and HourEnd cannot be equal unless both are 0 (0/0 = 24-hour full-day average).");
 
                 // end==0 uden 0/0 er ikke meningsfuldt
                 if (end == 0)
-                    return BadRequest("HourEnd=0 is only allowed with 0/0 (full day). Use 24 to represent end of day.");
+                    return BadRequest("HourEnd=0 is only allowed with 0/0 (24-hour full-day average). Use 24 to represent end of day.");
+
+                // Intervalstørrelse skal matche HoursPerDay
+                int intervalHours = (start < end)
+                    ? (end - start)
+                    : (24 - start) + end;
+
+                if (intervalHours != request.HoursPerDay)
+                    return BadRequest($"HoursPerDay={request.HoursPerDay} must equal the selected interval ({intervalHours} hours) derived from HourStart={start} and HourEnd={end}. For wrap-around intervals it is computed across midnight.");
             }
+            // Ved 0/0 bruges døgnets 24-timers gennemsnit som timepris, mens HoursPerDay bestemmer hvor mange timer pr. dag der udbetales.
 
             var result = await _revenueService.CalculateRevenueAsync(request);
             return Ok(result);

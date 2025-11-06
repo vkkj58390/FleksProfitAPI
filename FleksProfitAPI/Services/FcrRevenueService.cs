@@ -19,6 +19,7 @@ namespace FleksProfitAPI.Services
         /// <summary>
         /// Beregn månedlig revenue baseret på sidste hele måned.
         /// Understøtter wrap-around intervaller (fx 22-06) og 0/0 = hele døgnet.
+        /// Ved 0/0 beregnes timeprisen som gennemsnit over alle 24 timer.
         /// </summary>
         public async Task<RevenueResult> CalculateRevenueAsync(RevenueRequest request)
         {
@@ -34,25 +35,21 @@ namespace FleksProfitAPI.Services
             var end = request.HourEnd!.Value;
 
             bool fullDay = (start == 0 && end == 0);
-            int hoursPerDay;
 
-            if (fullDay)
+            if (!fullDay)
             {
-                // Ingen timefiltrering
-                hoursPerDay = 24;
+                if (start < end)
+                {
+                    // Ikke-wrap interval, fx 0-6
+                    query = query.Where(r => r.HourDK.Hour >= start && r.HourDK.Hour < end);
+                }
+                else
+                {
+                    // Wrap-around interval, fx 22-06
+                    query = query.Where(r => r.HourDK.Hour >= start || r.HourDK.Hour < end);
+                }
             }
-            else if (start < end)
-            {
-                // Ikke-wrap interval, fx 0-6
-                query = query.Where(r => r.HourDK.Hour >= start && r.HourDK.Hour < end);
-                hoursPerDay = end - start;
-            }
-            else
-            {
-                // Wrap-around interval, fx 22-06
-                query = query.Where(r => r.HourDK.Hour >= start || r.HourDK.Hour < end);
-                hoursPerDay = (24 - start) + end;
-            }
+            // Ved fullDay foretages ingen timefiltrering => gennemsnit over alle 24 timer
 
             var records = await query.ToListAsync();
 
@@ -61,12 +58,11 @@ namespace FleksProfitAPI.Services
                 return new RevenueResult
                 {
                     AveragePriceDKKPerMWHour = 0,
-                    MonthlyRevenueDKK = 0,
-                    HoursPerDayCalculated = hoursPerDay
+                    MonthlyRevenueDKK = 0
                 };
             }
 
-            // Gennemsnit pr. dag af FCRdk_DKK
+            // Gennemsnit pr. dag af FCRdk_DKK for de valgte timer (eller hele døgnet ved 0/0)
             var dailyAverages = records
                 .GroupBy(r => r.HourUTC.Date)
                 .Select(g => g.Average(r => r.FCRdk_DKK ?? 0))
@@ -75,13 +71,12 @@ namespace FleksProfitAPI.Services
             var averagePricePerMWPerHour = dailyAverages.Average();
 
             var capacityMW = request.CapacityKW / 1000.0;
-            var monthlyRevenue = averagePricePerMWPerHour * capacityMW * hoursPerDay * request.DaysPerMonth;
+            var monthlyRevenue = averagePricePerMWPerHour * capacityMW * request.HoursPerDay * request.DaysPerMonth;
 
             return new RevenueResult
             {
                 AveragePriceDKKPerMWHour = averagePricePerMWPerHour,
-                MonthlyRevenueDKK = monthlyRevenue,
-                HoursPerDayCalculated = hoursPerDay
+                MonthlyRevenueDKK = monthlyRevenue
             };
         }
     }
