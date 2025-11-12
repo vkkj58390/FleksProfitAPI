@@ -38,16 +38,16 @@ namespace FleksProfitAPI.Controllers
             if (start < 0 || start > 23) return BadRequest("HourStart must be in [0,23].");
             if (end < 0 || end > 24) return BadRequest("HourEnd must be in [0,24].");
 
-            var isFullDay = (start == 0 && end == 0);
-            if (!isFullDay)
+            var use24HourAverage = (start == 0 && end == 0);
+            if (!use24HourAverage)
             {
                 // start == end => 0 timer (ikke gyldigt)
                 if (start == end)
-                    return BadRequest("HourStart and HourEnd cannot be equal unless both are 0 (0/0 = 24-hour full-day average).");
+                    return BadRequest("HourStart and HourEnd cannot be equal unless both are 0 (0/0 = 24-hour average price).");
 
-                // end==0 uden 0/0 er ikke meningsfuldt
+                // end==0 uden 0/0 (ikke gyldigt)
                 if (end == 0)
-                    return BadRequest("HourEnd=0 is only allowed with 0/0 (24-hour full-day average). Use 24 to represent end of day.");
+                    return BadRequest("HourEnd=0 is only allowed with 0/0 (24-hour average price). Use 24 to represent end of day.");
 
                 // Intervalstørrelse skal matche HoursPerDay
                 int intervalHours = (start < end)
@@ -57,8 +57,8 @@ namespace FleksProfitAPI.Controllers
                 if (intervalHours != request.HoursPerDay)
                     return BadRequest($"HoursPerDay={request.HoursPerDay} must equal the selected interval ({intervalHours} hours) derived from HourStart={start} and HourEnd={end}. For wrap-around intervals it is computed across midnight.");
             }
+            
             // Ved 0/0 bruges døgnets 24-timers gennemsnit som timepris, mens HoursPerDay bestemmer hvor mange timer pr. dag der udbetales.
-
             var result = await _revenueService.CalculateRevenueAsync(request);
             return Ok(result);
         }
