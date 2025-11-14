@@ -1,17 +1,12 @@
 ﻿using FleksProfitAPI.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace FleksProfitAPI.Services
 {
-    /// <summary>
-    /// Baggrundsservice, der synkroniserer data fra EnergiNet til lokale tabeller.
-    /// Kan nemt udvides til flere systemydelser (FCR, aFRR, mFRR osv.)
-    /// </summary>
     public class EnergiNetSyncBackgroundService : BackgroundService
     {
         private readonly IServiceProvider _services;
         private readonly ILogger<EnergiNetSyncBackgroundService> _logger;
-        private readonly TimeSpan _updateInterval = TimeSpan.FromHours(1); // fx 1 gang i timen
+        private readonly TimeSpan _updateInterval = TimeSpan.FromHours(1);
 
         public EnergiNetSyncBackgroundService(IServiceProvider services, ILogger<EnergiNetSyncBackgroundService> logger)
         {
@@ -28,17 +23,10 @@ namespace FleksProfitAPI.Services
                 try
                 {
                     using var scope = _services.CreateScope();
-                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                     var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
-                    // senere kan man tilføje flere:
-                    // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
+                    var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
 
-                    // === FCR ===
-                    await SyncDatasetAsync("FCR", db, fcrService, stoppingToken);
-
-                    // === aFRR (eksempel, hvis man tilføjer senere) ===
-                    // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
-
+                    await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -52,25 +40,23 @@ namespace FleksProfitAPI.Services
             _logger.LogInformation("EnergiNet Sync baggrundsservice stoppet.");
         }
 
-        private async Task SyncDatasetAsync(string name, AppDbContext db, FcrDataService service, CancellationToken stoppingToken)
+        private async Task SyncDatasetAsync(string name, QuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
         {
             _logger.LogInformation("Starter synkronisering for {Dataset}", name);
 
-            var lastRecord = await db.FcrRecords
-                .OrderByDescending(r => r.HourUTC)
-                .FirstOrDefaultAsync(stoppingToken);
+            var lastHourUtc = await repo.GetLastHourUtcAsync(stoppingToken);
 
             DateTime start;
             DateTime end = DateTime.UtcNow;
 
-            if (lastRecord == null)
+            if (lastHourUtc == null)
             {
-                start = new DateTime(2020, 1, 1); // hent alt første gang
+                start = new DateTime(2020, 1, 1);
                 _logger.LogInformation("Første synk for {Dataset} - henter alt data siden {Start}", name, start);
             }
             else
             {
-                start = lastRecord.HourUTC.AddHours(1);
+                start = lastHourUtc.Value.AddHours(1);
                 _logger.LogInformation("Henter nyt {Dataset}-data fra {Start} til {End}", name, start, end);
             }
 

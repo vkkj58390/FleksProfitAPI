@@ -1,6 +1,5 @@
 ﻿using FleksProfitAPI.Data;
 using FleksProfitAPI.Models;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,11 +8,11 @@ namespace FleksProfitAPI.Services
 {
     public class FcrRevenueService
     {
-        private readonly AppDbContext _db;
+        private readonly QuestDbRepository _repo;
 
-        public FcrRevenueService(AppDbContext db)
+        public FcrRevenueService(QuestDbRepository repo)
         {
-            _db = db;
+            _repo = repo;
         }
 
         /// <summary>
@@ -28,9 +27,15 @@ namespace FleksProfitAPI.Services
             var startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            var query = _db.FcrRecords
-                .Where(r => r.HourUTC.Date >= startDate && r.HourUTC.Date <= endDate);
+            // Use Unspecified for 'timestamp' params
+            var startTs = DateTime.SpecifyKind(startDate, DateTimeKind.Unspecified);
+            var endTs   = DateTime.SpecifyKind(endDate.AddDays(1).AddTicks(-1), DateTimeKind.Unspecified);
 
+            var records = await _repo.GetFcrRecordsAsync(startTs, endTs);
+
+            var hasHourRange =
+                request.HourStart.HasValue && request.HourEnd.HasValue &&
+                !(request.HourStart == 0 && request.HourEnd == 0);
             var start = request.HourStart!.Value;
             var end = request.HourEnd!.Value;
 
@@ -48,10 +53,15 @@ namespace FleksProfitAPI.Services
                     // Wrap-around interval, fx 22-06
                     query = query.Where(r => r.HourDK.Hour >= start || r.HourDK.Hour < end);
                 }
+            if (hasHourRange)
+            {
+                var hStart = request.HourStart!.Value;
+                var hEnd = request.HourEnd!.Value;
+                records = records
+                    .Where(r => r.HourDK.Hour >= hStart && r.HourDK.Hour < hEnd)
+                    .ToList();
             }
             // Ved fullDay foretages ingen timefiltrering => gennemsnit over alle 24 timer
-
-            var records = await query.ToListAsync();
 
             if (!records.Any())
             {
@@ -69,7 +79,6 @@ namespace FleksProfitAPI.Services
                 .ToList();
 
             var averagePricePerMWPerHour = dailyAverages.Average();
-
             var capacityMW = request.CapacityKW / 1000.0;
             var monthlyRevenue = averagePricePerMWPerHour * capacityMW * request.HoursPerDay * request.DaysPerMonth;
 
