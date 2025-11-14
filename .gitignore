@@ -427,3 +427,7 @@ Data/*.db-wal
 
 # Ignore QuestDB database files
 questdb-data/
+
+# Ignore sync scripts
+run_sync.bat
+sync_branches.sh

@@ -17,8 +17,8 @@ namespace FleksProfitAPI.Services
 
         /// <summary>
         /// Beregn månedlig revenue baseret på sidste hele måned.
-        /// Hvis HourStart og HourEnd er angivet, beregnes kun for de timer.
-        /// 0/0 tolkes som "ingen timefiltrering".
+        /// Understøtter wrap-around intervaller (fx 22-06) og 0/0 = hele døgnet.
+        /// Ved 0/0 beregnes timeprisen som gennemsnit over alle 24 timer.
         /// </summary>
         public async Task<RevenueResult> CalculateRevenueAsync(RevenueRequest request)
         {
@@ -36,7 +36,23 @@ namespace FleksProfitAPI.Services
             var hasHourRange =
                 request.HourStart.HasValue && request.HourEnd.HasValue &&
                 !(request.HourStart == 0 && request.HourEnd == 0);
+            var start = request.HourStart!.Value;
+            var end = request.HourEnd!.Value;
 
+            bool fullDay = (start == 0 && end == 0);
+
+            if (!fullDay)
+            {
+                if (start < end)
+                {
+                    // Ikke-wrap interval, fx 0-6
+                    query = query.Where(r => r.HourDK.Hour >= start && r.HourDK.Hour < end);
+                }
+                else
+                {
+                    // Wrap-around interval, fx 22-06
+                    query = query.Where(r => r.HourDK.Hour >= start || r.HourDK.Hour < end);
+                }
             if (hasHourRange)
             {
                 var hStart = request.HourStart!.Value;
@@ -45,10 +61,18 @@ namespace FleksProfitAPI.Services
                     .Where(r => r.HourDK.Hour >= hStart && r.HourDK.Hour < hEnd)
                     .ToList();
             }
+            // Ved fullDay foretages ingen timefiltrering => gennemsnit over alle 24 timer
 
             if (!records.Any())
-                return new RevenueResult { AveragePriceDKKPerMWHour = 0, MonthlyRevenueDKK = 0 };
+            {
+                return new RevenueResult
+                {
+                    AveragePriceDKKPerMWHour = 0,
+                    MonthlyRevenueDKK = 0
+                };
+            }
 
+            // Gennemsnit pr. dag af FCRdk_DKK for de valgte timer (eller hele døgnet ved 0/0)
             var dailyAverages = records
                 .GroupBy(r => r.HourUTC.Date)
                 .Select(g => g.Average(r => r.FCRdk_DKK ?? 0))
