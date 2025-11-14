@@ -1,29 +1,83 @@
 using Npgsql;
+using NpgsqlTypes;
 using FleksProfitAPI.Models;
 
 namespace FleksProfitAPI.Data
 {
     public class QuestDbRepository
     {
-        private readonly NpgsqlDataSource _ds;
+        private readonly NpgsqlDataSource _dataSource;
 
-        public QuestDbRepository(NpgsqlDataSource ds) => _ds = ds;
+        public QuestDbRepository(NpgsqlDataSource dataSource)
+        {
+            _dataSource = dataSource;
+        }
 
-        private static NpgsqlParameter CreateTs(string name, DateTime dt) =>
-            new(name, NpgsqlTypes.NpgsqlDbType.Timestamp)
+        // Retry opening the connection to tolerate QuestDB startup races
+        private static async Task<NpgsqlConnection> OpenWithRetryAsync(NpgsqlDataSource ds, CancellationToken ct)
+        {
+            const int maxAttempts = 6;
+            var delay = TimeSpan.FromSeconds(2);
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    return await ds.OpenConnectionAsync(ct);
+                }
+                catch (NpgsqlException) when (attempt < maxAttempts)
+                {
+                    await Task.Delay(delay, ct);
+                    delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, 10));
+                }
+            }
+
+            // Final attempt: surface the real error
+            return await ds.OpenConnectionAsync(ct);
+        }
+
+        // Helper to create timestamp parameter with Unspecified kind
+        private static NpgsqlParameter CreateTs(string name, DateTime dt)
+        {
+            // QuestDB only supports TIMESTAMP (not timestamptz)
+            return new NpgsqlParameter(name, NpgsqlDbType.Timestamp)
             {
                 Value = DateTime.SpecifyKind(dt, DateTimeKind.Unspecified)
             };
+        }
 
+        // Ensure table exists with proper QuestDB timestamp definition
+        public async Task EnsureTableExistsAsync(CancellationToken ct = default)
+        {
+            const string sql = @"
+            CREATE TABLE IF NOT EXISTS fcrrecords (
+                hourutc TIMESTAMP,
+                hourdk TIMESTAMP,
+                fcrdomestic_mw DOUBLE,
+                fcrabroad_mw DOUBLE,
+                fcrcross_eur DOUBLE,
+                fcrcross_dkk DOUBLE,
+                fcrdk_eur DOUBLE,
+                fcrdk_dkk DOUBLE
+            )
+            TIMESTAMP(hourutc)
+            PARTITION BY DAY;";
+
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        // Insert new records
         public async Task<int> InsertFcrRecordsAsync(IEnumerable<FcrRecord> records, CancellationToken ct = default)
         {
             const string sql = @"
-                INSERT INTO fcrrecords
-                (hourutc, hourdk, fcrdomestic_mw, fcrabroad_mw, fcrcross_eur, fcrcross_dkk, fcrdk_eur, fcrdk_dkk)
-                VALUES (@hourutc, @hourdk, @fcrdomestic_mw, @fcrabroad_mw, @fcrcross_eur, @fcrcross_dkk, @fcrdk_eur, @fcrdk_dkk);";
+            INSERT INTO fcrrecords
+            (hourutc, hourdk, fcrdomestic_mw, fcrabroad_mw, fcrcross_eur, fcrcross_dkk, fcrdk_eur, fcrdk_dkk)
+            VALUES (@hourutc, @hourdk, @fcrdomestic_mw, @fcrabroad_mw, @fcrcross_eur, @fcrcross_dkk, @fcrdk_eur, @fcrdk_dkk);";
 
             var count = 0;
-            await using var conn = await _ds.OpenConnectionAsync(ct);
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
             await using var tx = await conn.BeginTransactionAsync(ct);
 
             foreach (var r in records)
@@ -45,16 +99,17 @@ namespace FleksProfitAPI.Data
             return count;
         }
 
+        // Read records between two UTC timestamps
         public async Task<List<FcrRecord>> GetFcrRecordsAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct = default)
         {
             const string sql = @"
-                SELECT hourutc, hourdk, fcrdomestic_mw, fcrabroad_mw, fcrcross_eur, fcrcross_dkk, fcrdk_eur, fcrdk_dkk
-                FROM fcrrecords
-                WHERE hourutc BETWEEN @start AND @end
-                ORDER BY hourutc;";
+            SELECT hourutc, hourdk, fcrdomestic_mw, fcrabroad_mw, fcrcross_eur, fcrcross_dkk, fcrdk_eur, fcrdk_dkk
+            FROM fcrrecords
+            WHERE hourutc BETWEEN @start AND @end
+            ORDER BY hourutc;";
 
             var list = new List<FcrRecord>();
-            await using var conn = await _ds.OpenConnectionAsync(ct);
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
             await using var cmd = new NpgsqlCommand(sql, conn);
             cmd.Parameters.Add(CreateTs("@start", startUtc));
             cmd.Parameters.Add(CreateTs("@end",   endUtc));
@@ -81,11 +136,10 @@ namespace FleksProfitAPI.Data
         public async Task<DateTime?> GetLastHourUtcAsync(CancellationToken ct = default)
         {
             const string sql = "SELECT max(hourutc) FROM fcrrecords;";
-            await using var conn = await _ds.OpenConnectionAsync(ct);
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
             await using var cmd = new NpgsqlCommand(sql, conn);
             var result = await cmd.ExecuteScalarAsync(ct);
-            if (result == null || result is DBNull) return null;
-            return (DateTime)result; // QuestDB returns timestamp as DateTime (Unspecified)
+            return result == null || result is DBNull ? null : (DateTime)result;
         }
     }
 }

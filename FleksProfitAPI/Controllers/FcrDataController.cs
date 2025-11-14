@@ -20,9 +20,13 @@ namespace FleksProfitAPI.Controllers
         [HttpPost("sync")]
         public async Task<IActionResult> Sync([FromQuery] DateTime? start, [FromQuery] DateTime? end, CancellationToken ct)
         {
-            // Default: last 2 days if not provided
+            // Ensure the table exists
+            await _repo.EnsureTableExistsAsync(ct);
+
+            // Default to last 2 days if no dates provided
             var e = end ?? DateTime.UtcNow.Date;
             var s = start ?? e.AddDays(-2);
+
 
             var inserted = await _fcrService.SyncFcrDataAsync(s, e, ct);
             return Ok(new { inserted, start = s, end = e });

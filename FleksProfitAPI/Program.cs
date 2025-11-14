@@ -4,10 +4,17 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Log environment + connection string
+Console.WriteLine($"ASPNETCORE_ENVIRONMENT={builder.Environment.EnvironmentName}");
+
+// Listen on 8080 for Docker
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
+
 // Npgsql DataSource (PostgreSQL wire to QuestDB)
 builder.Services.AddSingleton(sp =>
 {
     var cs = builder.Configuration.GetConnectionString("QuestDb");
+    Console.WriteLine($"Using QuestDB connection string: {cs}");
     var dsBuilder = new NpgsqlDataSourceBuilder(cs);
     return dsBuilder.Build();
 });
