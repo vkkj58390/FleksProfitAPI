@@ -15,6 +15,11 @@ namespace FleksProfitAPI.Services
             _repo = repo;
         }
 
+        /// <summary>
+        /// Beregn månedlig revenue baseret på sidste hele måned.
+        /// Hvis HourStart og HourEnd er angivet, beregnes kun for de timer.
+        /// 0/0 tolkes som "ingen timefiltrering".
+        /// </summary>
         public async Task<RevenueResult> CalculateRevenueAsync(RevenueRequest request)
         {
             var today = DateTime.UtcNow;

@@ -12,6 +12,10 @@ namespace FleksProfitAPI.Services
             _repo = repo;
         }
 
+        /// <summary>
+        /// Synkroniserer FCR-data fra EnergiNet for perioden [start, end].
+        /// Returnerer antal nye rækker indsat i databasen.
+        /// </summary>
         public async Task<int> SyncFcrDataAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Starting SyncFcrDataAsync from {start:O} to {end:O}");

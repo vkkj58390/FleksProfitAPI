@@ -2,6 +2,10 @@
 
 namespace FleksProfitAPI.Services
 {
+    /// <summary>
+    /// Baggrundsservice, der synkroniserer data fra EnergiNet til lokale tabeller.
+    /// Kan nemt udvides til flere systemydelser (FCR, aFRR, mFRR osv.)
+    /// </summary>
     public class EnergiNetSyncBackgroundService : BackgroundService
     {
         private readonly IServiceProvider _services;
@@ -25,9 +29,16 @@ namespace FleksProfitAPI.Services
                 {
                     using var scope = _services.CreateScope();
                     var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
+                    // senere kan man tilføje flere:
+                    // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
+                    
                     var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
-
+                    
+                    
+                    // === FCR ===
                     await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
+                    // === aFRR (eksempel, hvis man tilføjer senere) ===
+                    // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
                 }
                 catch (Exception ex)
                 {
