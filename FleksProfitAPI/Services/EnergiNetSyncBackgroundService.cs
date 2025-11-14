@@ -14,6 +14,7 @@ namespace FleksProfitAPI.Services
             _logger = logger;
         }
 
+        // Henter data fra EnergiNet ved opstart og derefter hver time og lægger det over i QuestDB
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("EnergiNet Sync baggrundsservice startet.");

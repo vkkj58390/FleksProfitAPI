@@ -1,0 +1,29 @@
+services:
+  questdb:
+    image: questdb/questdb:9.1.0
+    container_name: questdb
+    restart: unless-stopped
+    ports:
+      - "9000:9000"     # Web UI (browser - local host)
+      - "8812:8812"     # Postgres wire protocol (forbinder ASP.NET API via Npgsql)
+      - "9009:9009"     # REST API (sende HTTP-requests direkte til database (JSON))
+    volumes:
+      - ./questdb-data:/var/lib/questdb   # persistent data
+    environment:    # miljøvariabler
+      QDB_PG_USER: admin               # brugernavn (Postgres-protokollen)              
+      QDB_PG_PASSWORD: admin123        # password (Postgres-protokollen) 
+      QDB_PG_DATABASE: qdb             # databasen, som brugeren logger ind på 
+
+  fleksprofitapi:
+    build: ./FleksProfitAPI           # bygger image ud fra din Dockerfile i den mappe
+    container_name: fleksprofitapi
+    restart: unless-stopped
+    depends_on:
+    - questdb                        # sørger for at QuestDB starter først
+    ports:
+      - "5000:8080"                    # (venstre = din PC-port "browser/Swagger", højre = container-port)
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__QuestDb: "Host=questdb;Port=8812;Username=admin;Password=admin123;Database=qdb;Pooling=true;Maximum Pool Size=50;Server Compatibility Mode=NoTypeLoading"
+
+

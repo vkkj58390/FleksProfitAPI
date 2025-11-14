@@ -424,3 +424,6 @@ FodyWeavers.xsd
 Data/*.db
 Data/*.db-shm
 Data/*.db-wal
+
+# Ignore QuestDB database files
+questdb-data/

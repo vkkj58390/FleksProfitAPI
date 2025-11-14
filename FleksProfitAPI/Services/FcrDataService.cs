@@ -14,21 +14,32 @@ namespace FleksProfitAPI.Services
 
         public async Task<int> SyncFcrDataAsync(DateTime start, DateTime end, CancellationToken cancellationToken = default)
         {
-            var newData = await FetchDataAsync<FcrRecord>("FcrDK1", start, end, cancellationToken);
-            if (newData == null || !newData.Any())
-                return 0;
+            Console.WriteLine($"Starting SyncFcrDataAsync from {start:O} to {end:O}");
 
-            // Repository expects 'timestamp' params (Unspecified kind)
+            var newData = await FetchDataAsync<FcrRecord>("FcrDK1", start, end, cancellationToken);
+
+            if (newData == null || !newData.Any())
+            {
+                Console.WriteLine("No data fetched from Energinet API");
+                return 0;
+            }
+
+            Console.WriteLine($"Fetched {newData.Count} records from Energinet API");
+
             var existing = await _repo.GetFcrRecordsAsync(
                 DateTime.SpecifyKind(start, DateTimeKind.Unspecified),
-                DateTime.SpecifyKind(end,   DateTimeKind.Unspecified),
+                DateTime.SpecifyKind(end, DateTimeKind.Unspecified),
                 cancellationToken);
+
+            Console.WriteLine($"Found {existing.Count} existing records in QuestDB");
 
             var existingTicks = existing.Select(r => r.HourUTC.Ticks).ToHashSet();
 
             var freshData = newData
                 .Where(d => !existingTicks.Contains(d.HourUTC.Ticks))
                 .ToList();
+
+            Console.WriteLine($"Inserting {freshData.Count} new records into QuestDB");
 
             if (freshData.Count == 0)
                 return 0;
