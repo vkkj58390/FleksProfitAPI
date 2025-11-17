@@ -21,8 +21,35 @@ namespace FleksProfitAPI.Services
         // Henter data fra EnergiNet ved opstart og derefter hver time og lægger det over i QuestDB
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("EnergiNet Sync baggrundsservice startet.");
+            _logger.LogInformation("EnergiNet Sync service startet.");
 
+            // Initial bootstrap
+            try
+            {
+                using var scope = _services.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
+                await repo.EnsureTableExistsAsync(stoppingToken);
+                var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
+
+                var lastHour = await repo.GetLastHourUtcAsync(stoppingToken);
+                if (lastHour == null)
+                {
+                    var start = new DateTime(2020, 1, 1);
+                    var end = DateTime.UtcNow;
+                    var added = await fcrService.SyncFcrDataAsync(start, end, stoppingToken);
+                    _logger.LogInformation("Initial FCR sync done. {Count} rows inserted.", added);
+                }
+                else
+                {
+                    _logger.LogInformation("Data exists. Last hour: {LastHour}", lastHour);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Initial bootstrap failed, will retry next cycle.");
+            }
+
+            // Loop
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -33,7 +60,7 @@ namespace FleksProfitAPI.Services
                     // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
                     
                     var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
-                    
+                    await repo.EnsureTableExistsAsync(); // sikrer tabel hver cyklus
                     
                     // === FCR ===
                     await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
