@@ -133,6 +133,84 @@ namespace FleksProfitAPI.Data
             return list;
         }
 
+        // Ensure electricity prices table exists
+        public async Task EnsureElectricityPricesTableExistsAsync(CancellationToken ct = default)
+        {
+            const string sql = @"
+            CREATE TABLE IF NOT EXISTS electricityprices (
+                hourutc TIMESTAMP,
+                pricearea STRING,
+                total_price_dkk_per_kwh DOUBLE,
+                spot_price_dkk_per_kwh DOUBLE
+            )
+            TIMESTAMP(hourutc)
+            PARTITION BY DAY;";
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        public async Task<DateTime?> GetLastElectricityPriceHourUtcAsync(string priceArea, CancellationToken ct = default)
+        {
+            const string sql = "SELECT max(hourutc) FROM electricityprices WHERE pricearea = @pa;";
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@pa", priceArea);
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return result == null || result is DBNull ? null : (DateTime)result;
+        }
+
+        public async Task<int> InsertElectricityPricesAsync(IEnumerable<ElectricityPriceRecord> records, CancellationToken ct = default)
+        {
+            const string sql = @"
+            INSERT INTO electricityprices (hourutc, pricearea, total_price_dkk_per_kwh, spot_price_dkk_per_kwh)
+            VALUES (@hourutc, @pricearea, @total, @spot);";
+            int count = 0;
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
+            await using var tx = await conn.BeginTransactionAsync(ct);
+
+            foreach (var r in records)
+            {
+                await using var cmd = new NpgsqlCommand(sql, conn, tx);
+                cmd.Parameters.Add(CreateTs("@hourutc", r.HourUTC));
+                cmd.Parameters.AddWithValue("@pricearea", r.PriceArea);
+                cmd.Parameters.AddWithValue("@total", (object?)r.TotalPriceDKKPerKWh ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@spot", (object?)r.SpotPriceDKKPerKWh ?? DBNull.Value);
+                count += await cmd.ExecuteNonQueryAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+            return count;
+        }
+
+        public async Task<List<ElectricityPriceRecord>> GetElectricityPricesAsync(DateTime startUtc, DateTime endUtc, string priceArea, CancellationToken ct = default)
+        {
+            const string sql = @"
+            SELECT hourutc, pricearea, total_price_dkk_per_kwh, spot_price_dkk_per_kwh
+            FROM electricityprices
+            WHERE pricearea = @pa AND hourutc BETWEEN @start AND @end
+            ORDER BY hourutc;";
+            var list = new List<ElectricityPriceRecord>();
+            await using var conn = await OpenWithRetryAsync(_dataSource, ct);
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.Add(CreateTs("@start", startUtc));
+            cmd.Parameters.Add(CreateTs("@end", endUtc));
+            cmd.Parameters.AddWithValue("@pa", priceArea);
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new ElectricityPriceRecord
+                {
+                    HourUTC = reader.GetDateTime(0),
+                    PriceArea = reader.GetString(1),
+                    TotalPriceDKKPerKWh = reader.IsDBNull(2) ? null : reader.GetDouble(2),
+                    SpotPriceDKKPerKWh = reader.IsDBNull(3) ? null : reader.GetDouble(3)
+                });
+            }
+            return list;
+        }
+
         public async Task<DateTime?> GetLastHourUtcAsync(CancellationToken ct = default)
         {
             const string sql = "SELECT max(hourutc) FROM fcrrecords;";

@@ -38,8 +38,8 @@ namespace FleksProfitAPI.Controllers
             if (start < 0 || start > 23) return BadRequest("HourStart must be in [0,23].");
             if (end < 0 || end > 24) return BadRequest("HourEnd must be in [0,24].");
 
-            var use24HourAverage = (start == 0 && end == 0);
-            if (!use24HourAverage)
+            var useDailyAveragePrice = (start == 0 && end == 0);
+            if (!useDailyAveragePrice)
             {
                 // start == end => 0 timer (ikke gyldigt)
                 if (start == end)

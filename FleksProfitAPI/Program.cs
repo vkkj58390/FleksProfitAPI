@@ -22,6 +22,8 @@ builder.Services.AddScoped<QuestDbRepository>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<FcrDataService>();
 builder.Services.AddScoped<FcrRevenueService>();
+builder.Services.AddScoped<StromPriceDataService>();
+builder.Services.AddScoped<FcrProfitService>();
 builder.Services.AddHostedService<EnergiNetSyncBackgroundService>();
 
 // Controllers + Swagger + CORS

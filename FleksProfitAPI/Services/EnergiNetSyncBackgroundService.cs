@@ -64,8 +64,14 @@ namespace FleksProfitAPI.Services
                     
                     // === FCR ===
                     await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
+
                     // === aFRR (eksempel, hvis man tilføjer senere) ===
                     // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
+
+                    // === Strom Price Data ===
+                    var stromService = scope.ServiceProvider.GetRequiredService<StromPriceDataService>();
+                    await repo.EnsureElectricityPricesTableExistsAsync(stoppingToken);
+                    await SyncElectricityPricesAsync(stromService, "DK1", stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -101,6 +107,26 @@ namespace FleksProfitAPI.Services
 
             var addedCount = await service.SyncFcrDataAsync(start, end, stoppingToken);
             _logger.LogInformation("{Dataset} synk færdig - {Count} nye rækker tilføjet.", name, addedCount);
+        }
+
+        private async Task SyncElectricityPricesAsync(StromPriceDataService stromService, string priceArea, CancellationToken ct)
+        {
+            try
+            {
+                var lastHour = await _services.CreateScope().ServiceProvider
+                    .GetRequiredService<QuestDbRepository>()
+                    .GetLastElectricityPriceHourUtcAsync(priceArea, ct);
+
+                DateTime start = lastHour == null ? new DateTime(2021, 1, 18) : lastHour.Value.AddHours(1);
+                DateTime end = DateTime.UtcNow;
+
+                var added = await stromService.SyncElectricityPricesAsync(priceArea, start, end, ct);
+                _logger.LogInformation("Electricity price sync ({PriceArea}) added {Count} rows from {Start} to {End}", priceArea, added, start, end);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error syncing electricity prices {PriceArea}", priceArea);
+            }
         }
     }
 }
