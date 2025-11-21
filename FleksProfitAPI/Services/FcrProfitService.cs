@@ -95,15 +95,16 @@ namespace FleksProfitAPI.Services
             var tradedPowerKW = request.CapacityKW * request.ActivationCapacityFraction;
 
             // Køb kWh per scheduled hour = tradedPowerKW * activationHoursPerScheduledHourBuy
-            // Salg kWh per scheduled hour = tradedPowerKW * (1 - loss) * activationHoursPerScheduledHourSell
+            // Salg kWh per scheduled hour = tradedPowerKW * (1 - loss) * activationHoursPerScheduledHourSell (fx 64,484)
             var buyCostPerScheduledHour = tradedPowerKW * activationHoursPerScheduledHourBuy * avgBuyPrice;
             var sellRevenuePerScheduledHour = tradedPowerKW * (1 - request.LossFraction) * activationHoursPerScheduledHourSell * avgSellSpotPrice;
 
+            // 64,484 - 42,3 = 22,184 * 1 * 30 = 665,52
             var arbitrageProfitPerScheduledHour = sellRevenuePerScheduledHour - buyCostPerScheduledHour;
             var arbitrageProfitGross = arbitrageProfitPerScheduledHour * request.HoursPerDay * request.DaysPerMonth;
 
             var grossTotal = fcrRevenue + arbitrageProfitGross;
-            var aggregatorFee = grossTotal * request.AggregatorShare;
+            var aggregatorFee = fcrRevenue * request.AggregatorShare;
             var netTotal = grossTotal - aggregatorFee;
 
             return new FcrProfitResult

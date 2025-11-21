@@ -172,8 +172,8 @@ namespace FleksProfitAPI.Services
                     {
                         HourUTC = p.Date,
                         PriceArea = resp.PriceArea,
-                        TotalPriceDKKPerKWh = p.Price.Total,
-                        SpotPriceDKKPerKWh = p.Price.Value
+                        TotalPriceDKKPerKWh = p.Price.Total, // købspris inkl. alt
+                        SpotPriceDKKPerKWh  = p.Details?.Electricity?.Value ?? p.Price.Value // rå spotpris
                     })
                     .OrderBy(r => r.HourUTC)
                     .ToList();

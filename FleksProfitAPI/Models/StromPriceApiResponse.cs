@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace FleksProfitAPI.Models
 {
-    // Minimal mapping af Strømligning API respons
     public class StromPriceApiResponse
     {
         [JsonPropertyName("priceArea")]
@@ -21,17 +20,16 @@ namespace FleksProfitAPI.Models
         public StromPriceValue Price { get; set; } = new();
 
         [JsonPropertyName("details")]
-        public StromPriceDetails Details { get; set; } = new();
+        public StromPriceDetails? Details { get; set; }
     }
 
     public class StromPriceValue
     {
         [JsonPropertyName("value")]
-        public double Value { get; set; }  // Spot base (kr/kWh) ekskl. moms?
-        [JsonPropertyName("vat")]
-        public double Vat { get; set; }
+        public double Value { get; set; }
+
         [JsonPropertyName("total")]
-        public double Total { get; set; }  // Total købspris (inkl. alt)
+        public double Total { get; set; }
     }
 
     public class StromPriceDetails
