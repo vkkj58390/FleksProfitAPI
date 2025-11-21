@@ -8,7 +8,7 @@ on:
 
 jobs:
   unit-tests:
-    name: Unit tests (fast)
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,12 +25,15 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Run unit tests (exclude Integration)
+      - name: Run unit tests
         run: |
-          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj --no-build -c Release --logger "console;verbosity=normal" --filter "TestCategory!=Integration"
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj 
+            --no-build -c Release 
+            --logger "console;verbosity=normal" 
+            --filter "TestCategory!=Integration"
 
   integration-tests:
-    name: Integration tests (docker)
+    name: Integration tests
     runs-on: ubuntu-latest
     needs: unit-tests
     timeout-minutes: 30
@@ -49,9 +52,12 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Run integration tests (Integration only)
+      - name: Run integration tests
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: 1
         run: |
           docker version
-          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj --no-build -c Release --logger "console;verbosity=normal" --filter "TestCategory=Integration"
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj -
+            -no-build -c Release 
+            --logger "console;verbosity=normal" 
+            --filter "TestCategory=Integration"
