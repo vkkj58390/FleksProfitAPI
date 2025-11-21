@@ -5,9 +5,9 @@ namespace FleksProfitAPI.Services
 {
     public class FcrDataService : EnergiNetBaseService
     {
-        private readonly QuestDbRepository _repo;
+        private readonly IQuestDbRepository _repo;
 
-        public FcrDataService(HttpClient httpClient, QuestDbRepository repo) : base(httpClient)
+        public FcrDataService(HttpClient httpClient, IQuestDbRepository repo) : base(httpClient)
         {
             _repo = repo;
         }

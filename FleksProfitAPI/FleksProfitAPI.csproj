@@ -7,9 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="net-questdb-client" Version="3.0.1" />
-    <PackageReference Include="Npgsql" Version="8.0.3" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <None Include=".github\workflows\dotnet-tests.yml" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Runtime-only dependencies -->
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+
+    <PackageReference Include="net-questdb-client" Version="3.0.1" />
+  </ItemGroup>
 </Project>

@@ -27,7 +27,7 @@ namespace FleksProfitAPI.Services
             try
             {
                 using var scope = _services.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
+                var repo = scope.ServiceProvider.GetRequiredService<IQuestDbRepository>();
                 await repo.EnsureTableExistsAsync(stoppingToken);
                 var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
 
@@ -59,11 +59,12 @@ namespace FleksProfitAPI.Services
                     // senere kan man tilføje flere:
                     // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
                     
-                    var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
+                    var repo = scope.ServiceProvider.GetRequiredService<IQuestDbRepository>();
                     await repo.EnsureTableExistsAsync(); // sikrer tabel hver cyklus
                     
                     // === FCR ===
                     await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
+
                     // === aFRR (eksempel, hvis man tilføjer senere) ===
                     // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
                 }
@@ -79,7 +80,7 @@ namespace FleksProfitAPI.Services
             _logger.LogInformation("EnergiNet Sync baggrundsservice stoppet.");
         }
 
-        private async Task SyncDatasetAsync(string name, QuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
+        private async Task SyncDatasetAsync(string name, IQuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
         {
             _logger.LogInformation("Starter synkronisering for {Dataset}", name);
 

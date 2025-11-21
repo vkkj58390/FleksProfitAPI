@@ -4,7 +4,7 @@ using FleksProfitAPI.Models;
 
 namespace FleksProfitAPI.Data
 {
-    public class QuestDbRepository
+    public class QuestDbRepository : IQuestDbRepository
     {
         private readonly NpgsqlDataSource _dataSource;
 
@@ -32,21 +32,18 @@ namespace FleksProfitAPI.Data
                 }
             }
 
-            // Final attempt: surface the real error
             return await ds.OpenConnectionAsync(ct);
         }
 
-        // Helper to create timestamp parameter with Unspecified kind
         private static NpgsqlParameter CreateTs(string name, DateTime dt)
         {
-            // QuestDB only supports TIMESTAMP (not timestamptz)
             return new NpgsqlParameter(name, NpgsqlDbType.Timestamp)
             {
                 Value = DateTime.SpecifyKind(dt, DateTimeKind.Unspecified)
             };
         }
 
-        // Ensure table exists with proper QuestDB timestamp definition
+        // Ensure table exists in QuestDB
         public async Task EnsureTableExistsAsync(CancellationToken ct = default)
         {
             const string sql = @"
@@ -84,18 +81,25 @@ namespace FleksProfitAPI.Data
             {
                 await using var cmd = new NpgsqlCommand(sql, conn, tx);
                 cmd.Parameters.Add(CreateTs("@hourutc", r.HourUTC));
-                cmd.Parameters.Add(CreateTs("@hourdk",  r.HourDK));
+                cmd.Parameters.Add(CreateTs("@hourdk", r.HourDK));
                 cmd.Parameters.AddWithValue("@fcrdomestic_mw", (object?)r.FCRdomestic_MW ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fcrabroad_mw",   (object?)r.FCRabroad_MW   ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fcrcross_eur",   (object?)r.FCRcross_EUR   ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fcrcross_dkk",   (object?)r.FCRcross_DKK   ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fcrdk_eur",      (object?)r.FCRdk_EUR      ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fcrdk_dkk",      (object?)r.FCRdk_DKK      ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fcrabroad_mw", (object?)r.FCRabroad_MW ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fcrcross_eur", (object?)r.FCRcross_EUR ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fcrcross_dkk", (object?)r.FCRcross_DKK ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fcrdk_eur", (object?)r.FCRdk_EUR ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fcrdk_dkk", (object?)r.FCRdk_DKK ?? DBNull.Value);
 
-                count += await cmd.ExecuteNonQueryAsync(ct);
+                #region
+                Console.WriteLine($"Inserting: hourutc={r.HourUTC:o}, hourdk={r.HourDK:o}, fcrdk_dkk={r.FCRdk_DKK}");
+                #endregion
+
+                var result = await cmd.ExecuteNonQueryAsync(ct);
+                Console.WriteLine($"ExecuteNonQuery returned for row: {result}");
+                count += result;
             }
 
             await tx.CommitAsync(ct);
+            Console.WriteLine("Transaction committed");
             return count;
         }
 
@@ -112,7 +116,12 @@ namespace FleksProfitAPI.Data
             await using var conn = await OpenWithRetryAsync(_dataSource, ct);
             await using var cmd = new NpgsqlCommand(sql, conn);
             cmd.Parameters.Add(CreateTs("@start", startUtc));
-            cmd.Parameters.Add(CreateTs("@end",   endUtc));
+            cmd.Parameters.Add(CreateTs("@end", endUtc));
+
+            #region
+            Console.WriteLine($"Query BETWEEN {startUtc:o} AND {endUtc:o}");
+            foreach (NpgsqlParameter p in cmd.Parameters) Console.WriteLine($"Param {p.ParameterName} = {p.Value} (NpgsqlDbType={p.NpgsqlDbType})");
+            #endregion
 
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
@@ -122,11 +131,11 @@ namespace FleksProfitAPI.Data
                     HourUTC = reader.GetDateTime(0),
                     HourDK = reader.GetDateTime(1),
                     FCRdomestic_MW = reader.IsDBNull(2) ? null : reader.GetDouble(2),
-                    FCRabroad_MW   = reader.IsDBNull(3) ? null : reader.GetDouble(3),
-                    FCRcross_EUR   = reader.IsDBNull(4) ? null : reader.GetDouble(4),
-                    FCRcross_DKK   = reader.IsDBNull(5) ? null : reader.GetDouble(5),
-                    FCRdk_EUR      = reader.IsDBNull(6) ? null : reader.GetDouble(6),
-                    FCRdk_DKK      = reader.IsDBNull(7) ? null : reader.GetDouble(7)
+                    FCRabroad_MW = reader.IsDBNull(3) ? null : reader.GetDouble(3),
+                    FCRcross_EUR = reader.IsDBNull(4) ? null : reader.GetDouble(4),
+                    FCRcross_DKK = reader.IsDBNull(5) ? null : reader.GetDouble(5),
+                    FCRdk_EUR = reader.IsDBNull(6) ? null : reader.GetDouble(6),
+                    FCRdk_DKK = reader.IsDBNull(7) ? null : reader.GetDouble(7)
                 });
             }
 
