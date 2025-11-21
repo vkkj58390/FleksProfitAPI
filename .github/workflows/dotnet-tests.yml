@@ -9,7 +9,6 @@ on:
       - "**"   # alle pushes
     paths-ignore:
       - "README.md"
-      - ".github/**"  # undgå workflow loops
 
 jobs:
 
