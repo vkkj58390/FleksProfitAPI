@@ -1,4 +1,4 @@
-name: .NET tests
+name: .NET CI
 
 on:
   pull_request:
@@ -9,6 +9,8 @@ on:
       - "**"   # alle pushes
     paths-ignore:
       - "README.md"
+      - ".github/**"  # undgå workflow loops
+      - "!.github/workflows/*"
 
 jobs:
 
@@ -31,17 +33,17 @@ jobs:
         run: dotnet build FleksProfitAPI/FleksProfitAPI.sln --no-restore -c Release
 
       - name: Run unit tests
-        run: dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
+        run: |
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
             --no-build -c Release \
             --logger "trx;LogFileName=unit-tests.trx" \
             --filter "TestCategory!=Integration"
 
-      - name: Upload test results
+      - name: Upload unit test results
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results
           path: "**/*.trx"
-
 
   integration-tests:
     name: Integration tests (main branch only)
@@ -65,7 +67,8 @@ jobs:
         run: dotnet build FleksProfitAPI/FleksProfitAPI.sln --no-restore -c Release
 
       - name: Run integration tests
-        run: dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
+        run: |
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
             --no-build -c Release \
             --logger "trx;LogFileName=integration-tests.trx" \
             --filter "TestCategory=Integration"
