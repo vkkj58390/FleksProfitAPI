@@ -8,8 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageReference Include="MSTest" Version="3.6.4" />
+    <!-- Test SDK + MSTest -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.0.2" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.0.2" />
+
+    <!-- Integration tests (QuestDB container) -->
+    <PackageReference Include="Testcontainers" Version="4.8.1" />
+
+    <!-- Samme Npgsql-version som hovedprojekt -->
+    <PackageReference Include="Npgsql" Version="8.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,5 +27,6 @@
   <ItemGroup>
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
-
 </Project>
+
+

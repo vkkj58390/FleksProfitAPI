@@ -3,15 +3,14 @@ using FleksProfitAPI.Models;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace FleksProfitAPI.Services
 {
     public class FcrRevenueService
     {
-        private readonly QuestDbRepository _repo;
+        private readonly IQuestDbRepository _repo;
 
-        public FcrRevenueService(QuestDbRepository repo)
+        public FcrRevenueService(IQuestDbRepository repo)
         {
             _repo = repo;
         }

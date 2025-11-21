@@ -16,7 +16,7 @@ builder.Services.AddSingleton(sp =>
 });
 
 // QuestDB repository
-builder.Services.AddScoped<QuestDbRepository>();
+builder.Services.AddScoped<IQuestDbRepository, QuestDbRepository>();
 
 // Services
 builder.Services.AddHttpClient();
@@ -35,7 +35,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
 
 if (app.Environment.IsDevelopment())
 {
