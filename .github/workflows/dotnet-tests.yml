@@ -3,19 +3,21 @@ name: .NET CI
 on:
   pull_request:
     branches:
-      - main
+      - main       # Kun PR ind i main trigger integration tests
   push:
     branches:
-      - "**"
+      - "**"       # Alle pushes
     paths-ignore:
       - "README.md"
-      - ".github/**"             # Undgå workflow loops
-      - "!.github/workflows/*"    # Workflow køres ved ændring af workflow-fil
+      - ".github/**"
+      - "!.github/workflows/*"   # Workflow kører ved ændring af workflow-filer
+
 jobs:
 
   unit-tests:
-    name: Unit tests
-    runs-on: ubuntu-latest
+    name: Unit Tests
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +26,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
       - name: Restore
         run: dotnet restore FleksProfitAPI/FleksProfitAPI.sln
@@ -35,22 +45,64 @@ jobs:
         run: |
           dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
             --no-build -c Release \
+            --results-directory test-results \
             --logger "trx;LogFileName=unit-tests.trx" \
             --filter "TestCategory!=Integration"
 
-      - name: Upload unit test results
-        uses: actions/upload-artifact@v4
+      - name: Install trx2junit (cached)
+        uses: actions/cache@v4
         with:
-          name: unit-test-results
-          path: "**/*.trx"
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-trx2junit
+        # Installer kun hvis mappen er tom
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: dotnet tool install -g trx2junit
+
+      - name: Convert TRX → JUnit
+        run: trx2junit test-results/*.trx
+
+      - name: Report test results (annotations)
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Tests
+          path: test-results/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "## 🧪 Unit Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✔ Unit tests executed" >> $GITHUB_STEP_SUMMARY
+          echo "✔ TRX converted to JUnit" >> $GITHUB_STEP_SUMMARY
+          echo "✔ Detailed logs available in annotations" >> $GITHUB_STEP_SUMMARY
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ### 🧪 Unit Test Results
+            Status: **${{ job.status }}**
+            - JUnit annotations added
+            - TRX → JUnit conversion completed
+            Se detaljer i GitHub Actions sektionen.
+
 
   integration-tests:
-    name: Integration tests (PR + main)
-    runs-on: ubuntu-latest
+    name: Integration Tests
+    runs-on: ubuntu-22.04
     needs: unit-tests
     timeout-minutes: 30
-    # Integration-tests kører kun på PR mod main
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+
+    # Kør KUN ved:
+    #   1. Push til main
+    #   2. PR ind i main
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request')
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,6 +111,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
       - name: Restore
         run: dotnet restore FleksProfitAPI/FleksProfitAPI.sln
@@ -70,11 +130,33 @@ jobs:
         run: |
           dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
             --no-build -c Release \
+            --results-directory test-results \
             --logger "trx;LogFileName=integration-tests.trx" \
             --filter "TestCategory=Integration"
 
-      - name: Upload integration test results
-        uses: actions/upload-artifact@v4
+      - name: Install trx2junit (cached)
+        uses: actions/cache@v4
         with:
-          name: integration-test-results
-          path: "**/*.trx"
+          path: ~/.dotnet/tools
+          key: ${{ runner.os }}-trx2junit
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: dotnet tool install -g trx2junit
+
+      - name: Convert TRX → JUnit
+        run: trx2junit test-results/*.trx
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Integration Tests
+          path: test-results/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "## 🔗 Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "✔ Integration tests executed" >> $GITHUB_STEP_SUMMARY
+          echo "✔ JUnit annotations applied" >> $GITHUB_STEP_SUMMARY
