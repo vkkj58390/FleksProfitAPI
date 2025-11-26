@@ -19,7 +19,7 @@ permissions:
 jobs:
 
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (Job)
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -70,13 +70,13 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Unit Tests
+          name: Unit Test Results
           path: test-results/*.xml
           reporter: java-junit
           fail-on-error: false
 
   integration-tests:
-    name: Integration Tests
+    name: Integration Tests (Job)
     runs-on: ubuntu-22.04
     needs: unit-tests
     timeout-minutes: 30
@@ -132,7 +132,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Integration Tests
+          name: Integration Test Results
           path: test-results/*.xml
           reporter: java-junit
           fail-on-error: false
