@@ -166,7 +166,10 @@ jobs:
           path: test-results/*.xml
           reporter: java-junit
           fail-on-error: false
-
+          
+      - name: Install xmllint  # Linux-værktøj til at læse og hente data fra XML-filer
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+        
       - name: Add Integration Test Summary
         if: always()
         run: |
