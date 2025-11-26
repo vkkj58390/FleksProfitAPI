@@ -12,6 +12,10 @@ on:
       - ".github/**"
       - "!.github/workflows/*"
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
 
   unit-tests:
