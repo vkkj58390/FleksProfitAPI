@@ -17,8 +17,6 @@ jobs:
   setup-trx2junit:
     name: Setup trx2junit
     runs-on: ubuntu-22.04
-    outputs:
-      tool-path: ${{ steps.set-output-tool-path.outputs.tool-path }}
     steps:
       - name: Cache trx2junit tool
         id: cache
@@ -32,11 +30,7 @@ jobs:
         run: dotnet tool install -g trx2junit
 
       - name: Add dotnet tools to PATH
-        run: echo "$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
-
-      - name: Set tool path output
-        id: set-output-tool-path
-        run: echo "tool-path=~/.dotnet/tools" >> $GITHUB_OUTPUT
+        run: echo "PATH=$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
 
   unit-tests:
     name: Unit Tests
