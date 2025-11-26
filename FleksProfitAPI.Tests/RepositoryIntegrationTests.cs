@@ -19,12 +19,17 @@ public class RepositoryIntegrationTests
     [ClassInitialize]
     public static void ClassInit(TestContext _)
     {
+        // read credentials from env with sensible defaults
+        var user = Environment.GetEnvironmentVariable("TEST_QUESTDB_USER") ?? "admin";
+        var password = Environment.GetEnvironmentVariable("TEST_QUESTDB_PASSWORD") ?? "admin123";
+        var database = Environment.GetEnvironmentVariable("TEST_QUESTDB_DATABASE") ?? "qdb";
+
         _quest = new ContainerBuilder()
             .WithImage("questdb/questdb:9.1.0")
             .WithPortBinding(8812, true)
-            .WithEnvironment("QDB_PG_USER", "admin")
-            .WithEnvironment("QDB_PG_PASSWORD", "admin123")
-            .WithEnvironment("QDB_PG_DATABASE", "qdb")
+            .WithEnvironment("QDB_PG_USER", user)
+            .WithEnvironment("QDB_PG_PASSWORD", password)
+            .WithEnvironment("QDB_PG_DATABASE", database)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(8812))
             .Build();
 
@@ -35,7 +40,7 @@ public class RepositoryIntegrationTests
 
         // Disable pooling for tests to avoid stale connections during container startup/restart
         _connString =
-            $"Host=localhost;Port={hostPort};Username=admin;Password=admin123;Database=qdb;Pooling=false;Server Compatibility Mode=NoTypeLoading";
+            $"Host=localhost;Port={hostPort};Username={user};Password={password};Database={database};Pooling=false;Server Compatibility Mode=NoTypeLoading";
 
         // Poll until the Postgres/pgwire endpoint accepts connections (fresh non-pooled connection)
         var ds = new NpgsqlDataSourceBuilder(_connString).Build();
