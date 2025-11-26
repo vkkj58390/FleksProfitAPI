@@ -31,7 +31,10 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: dotnet tool install -g trx2junit
 
-      - name: Set tool path
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
+
+      - name: Set tool path output
         id: set-output-tool-path
         run: echo "tool-path=~/.dotnet/tools" >> $GITHUB_OUTPUT
 
@@ -39,7 +42,6 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-22.04
     needs: setup-trx2junit
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +76,13 @@ jobs:
       - name: Convert TRX → JUnit
         run: trx2junit test-results/*.trx
 
-      - name: Report test results
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: test-results/*.xml
+
+      - name: Report unit test results
         if: always()
         uses: dorny/test-reporter@v1
         with:
@@ -91,7 +99,6 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request')
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,7 +133,13 @@ jobs:
       - name: Convert TRX → JUnit
         run: trx2junit test-results/*.trx
 
-      - name: Publish test results
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test-results/*.xml
+
+      - name: Report integration test results
         if: always()
         uses: dorny/test-reporter@v1
         with:
