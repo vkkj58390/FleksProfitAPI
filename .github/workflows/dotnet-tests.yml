@@ -81,24 +81,24 @@ jobs:
       - name: Add Unit Test Summary
         if: always()
         run: |
-          #!/bin/bash
-          XML_FILE=$(ls test-results/*.xml | head -n1)
+          XML_FILE="test-results/unit-test-results.xml"
           if [ -f "$XML_FILE" ]; then
             TOTAL=$(xmllint --xpath 'string(/testsuite/@tests)' "$XML_FILE")
             FAILS=$(xmllint --xpath 'string(/testsuite/@failures)' "$XML_FILE")
             SKIPPED=$(xmllint --xpath 'string(/testsuite/@skipped)' "$XML_FILE")
             PASSED=$((TOTAL - FAILS - SKIPPED))
-
+      
             echo "### Unit Test Summary" >> $GITHUB_STEP_SUMMARY
             echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
             echo "- Tests executed: $TOTAL" >> $GITHUB_STEP_SUMMARY
             echo "- Passed: $PASSED ✅" >> $GITHUB_STEP_SUMMARY
             echo "- Failed: $FAILS ❌" >> $GITHUB_STEP_SUMMARY
             echo "- Skipped: $SKIPPED ⏭️" >> $GITHUB_STEP_SUMMARY
-            echo "- Artifact: [unit-test-results](test-results/*.xml)" >> $GITHUB_STEP_SUMMARY
+            echo "- Artifact: [unit-test-results](test-results/unit-test-results.xml)" >> $GITHUB_STEP_SUMMARY
           else
             echo "No unit test XML found" >> $GITHUB_STEP_SUMMARY
           fi
+
 
 
   integration-tests:
@@ -173,7 +173,7 @@ jobs:
       - name: Add Integration Test Summary
         if: always()
         run: |
-          XML_FILE=$(ls test-results/*.xml | head -n1)
+          XML_FILE="test-results/integration-test-results.xml"
           if [ -f "$XML_FILE" ]; then
             TOTAL=$(xmllint --xpath 'string(/testsuite/@tests)' "$XML_FILE")
             FAILS=$(xmllint --xpath 'string(/testsuite/@failures)' "$XML_FILE")
