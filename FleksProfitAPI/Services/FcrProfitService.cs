@@ -12,7 +12,7 @@ namespace FleksProfitAPI.Services
             _repo = repo;
         }
 
-        public async Task<FcrProfitResult> CalculateProfitAsync(FcrProfitRequest request)
+        public async Task<ProfitResult> CalculateProfitAsync(ProfitRequest request)
         {
             // Sidste hele måned
             var today = DateTime.UtcNow;
@@ -31,7 +31,7 @@ namespace FleksProfitAPI.Services
             // If no data -> zero
             if (fcrRecords.Count == 0 || priceRecords.Count == 0)
             {
-                return new FcrProfitResult
+                return new ProfitResult
                 {
                     AverageFcrPriceDKKPerMWHour = 0,
                     FcrRevenueDKK = 0,
@@ -39,10 +39,7 @@ namespace FleksProfitAPI.Services
                     AverageSellSpotPriceDKKPerKWh = 0,
                     ArbitrageProfitGrossDKK = 0,
                     AggregatorFeeDKK = 0,
-                    TotalNetProfitDKK = 0,
-                    BatteryLossFraction = request.LossFraction,
-                    ActivationRatio = request.ActivationRatio,
-                    ActivationCapacityFraction = request.ActivationCapacityFraction
+                    TotalNetProfitDKK = 0
                 };
             }
 
@@ -107,7 +104,7 @@ namespace FleksProfitAPI.Services
             var aggregatorFee = fcrRevenue * request.AggregatorShare;
             var netTotal = grossTotal - aggregatorFee;
 
-            return new FcrProfitResult
+            return new ProfitResult
             {
                 AverageFcrPriceDKKPerMWHour = avgFcrPrice,
                 FcrRevenueDKK = fcrRevenue,
@@ -115,10 +112,7 @@ namespace FleksProfitAPI.Services
                 AverageSellSpotPriceDKKPerKWh = avgSellSpotPrice,
                 ArbitrageProfitGrossDKK = arbitrageProfitGross,
                 AggregatorFeeDKK = aggregatorFee,
-                TotalNetProfitDKK = netTotal,
-                BatteryLossFraction = request.LossFraction,
-                ActivationRatio = request.ActivationRatio,
-                ActivationCapacityFraction = request.ActivationCapacityFraction
+                TotalNetProfitDKK = netTotal
             };
         }
     }

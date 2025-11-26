@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace FleksProfitAPI.Models
 {
-    public class StromPriceApiResponse
+    public class ResponseStromligningApi
     {
         [JsonPropertyName("priceArea")]
         public string PriceArea { get; set; } = "";

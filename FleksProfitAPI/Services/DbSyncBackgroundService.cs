@@ -3,32 +3,32 @@
 namespace FleksProfitAPI.Services
 {
     /// <summary>
-    /// Baggrundsservice, der synkroniserer data fra EnergiNet til lokale tabeller.
-    /// Kan nemt udvides til flere systemydelser (FCR, aFRR, mFRR osv.)
+    /// Baggrundsservice, der synkroniserer data til QuestDB-tabeller.
+    /// Understøtter flere datasæt (FCR, elpriser m.fl.).
     /// </summary>
-    public class EnergiNetSyncBackgroundService : BackgroundService
+    public class DbSyncBackgroundService : BackgroundService
     {
         private readonly IServiceProvider _services;
-        private readonly ILogger<EnergiNetSyncBackgroundService> _logger;
+        private readonly ILogger<DbSyncBackgroundService> _logger;
         private readonly TimeSpan _updateInterval = TimeSpan.FromHours(1);
 
-        public EnergiNetSyncBackgroundService(IServiceProvider services, ILogger<EnergiNetSyncBackgroundService> logger)
+        public DbSyncBackgroundService(IServiceProvider services, ILogger<DbSyncBackgroundService> logger)
         {
             _services = services;
             _logger = logger;
         }
 
-        // Henter data fra EnergiNet ved opstart og derefter hver time og lægger det over i QuestDB
+        // Henter data ved opstart og derefter hver time og lægger det over i QuestDB
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("EnergiNet Sync service startet.");
+            _logger.LogInformation("DB Sync service startet.");
 
             // Initial bootstrap
             try
             {
                 using var scope = _services.CreateScope();
                 var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
-                await repo.EnsureTableExistsAsync(stoppingToken);
+                await repo.EnsureFcrRecordsTableExistsAsync(stoppingToken);
                 var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
 
                 var lastHour = await repo.GetLastHourUtcAsync(stoppingToken);
@@ -60,10 +60,10 @@ namespace FleksProfitAPI.Services
                     // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
                     
                     var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
-                    await repo.EnsureTableExistsAsync(); // sikrer tabel hver cyklus
+                    await repo.EnsureFcrRecordsTableExistsAsync(); // sikrer tabel hver cyklus
                     
                     // === FCR ===
-                    await SyncDatasetAsync("FCR", repo, fcrService, stoppingToken);
+                    await SyncEnerginetDatasetAsync("FCR", repo, fcrService, stoppingToken);
 
                     // === aFRR (eksempel, hvis man tilføjer senere) ===
                     // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
@@ -75,17 +75,17 @@ namespace FleksProfitAPI.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Fejl under synkronisering fra EnergiNet.");
+                    _logger.LogError(ex, "Fejl under synkronisering.");
                 }
 
                 _logger.LogInformation("Venter {Hours} time(r) før næste synk...", _updateInterval.TotalHours);
                 await Task.Delay(_updateInterval, stoppingToken);
             }
 
-            _logger.LogInformation("EnergiNet Sync baggrundsservice stoppet.");
+            _logger.LogInformation("DB Sync baggrundsservice stoppet.");
         }
 
-        private async Task SyncDatasetAsync(string name, QuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
+        private async Task SyncEnerginetDatasetAsync(string name, QuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
         {
             _logger.LogInformation("Starter synkronisering for {Dataset}", name);
 

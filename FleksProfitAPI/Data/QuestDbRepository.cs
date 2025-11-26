@@ -47,7 +47,7 @@ namespace FleksProfitAPI.Data
         }
 
         // Ensure table exists with proper QuestDB timestamp definition
-        public async Task EnsureTableExistsAsync(CancellationToken ct = default)
+        public async Task EnsureFcrRecordsTableExistsAsync(CancellationToken ct = default)
         {
             const string sql = @"
             CREATE TABLE IF NOT EXISTS fcrrecords (

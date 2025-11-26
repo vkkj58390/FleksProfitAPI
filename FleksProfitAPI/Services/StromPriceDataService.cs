@@ -147,10 +147,10 @@ namespace FleksProfitAPI.Services
             // lokal helper:
             async Task ParseAndInsertAsync(string json, string area, DateTime chunkStart, DateTime chunkEndIncl, CancellationToken token)
             {
-                StromPriceApiResponse? resp;
+                ResponseStromligningApi? resp;
                 try
                 {
-                    resp = JsonSerializer.Deserialize<StromPriceApiResponse>(json);
+                    resp = JsonSerializer.Deserialize<ResponseStromligningApi>(json);
                 }
                 catch (Exception ex)
                 {

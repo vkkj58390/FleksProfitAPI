@@ -21,7 +21,7 @@ namespace FleksProfitAPI.Controllers
         public async Task<IActionResult> Sync([FromQuery] DateTime? start, [FromQuery] DateTime? end, CancellationToken ct)
         {
             // Ensure the table exists
-            await _repo.EnsureTableExistsAsync(ct);
+            await _repo.EnsureFcrRecordsTableExistsAsync(ct);
 
             // Default to last 2 days if no dates provided
             var e = end ?? DateTime.UtcNow.Date;

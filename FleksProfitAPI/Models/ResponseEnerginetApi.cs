@@ -2,7 +2,7 @@
 
 namespace FleksProfitAPI.Models
 {
-    public class EnergiNetResponse<T>
+    public class ResponseEnerginetApi<T>
     {
         public int Total { get; set; }
         public int Limit { get; set; }
