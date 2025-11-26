@@ -107,6 +107,10 @@ jobs:
         run: dotnet build FleksProfitAPI/FleksProfitAPI.sln --no-restore -c Release
 
       - name: Run integration tests
+        env:
+          TEST_QUESTDB_USER: ${{ secrets.TEST_QUESTDB_USER }}
+          TEST_QUESTDB_PASSWORD: ${{ secrets.TEST_QUESTDB_PASSWORD }}
+          TEST_QUESTDB_DATABASE: ${{ secrets.TEST_QUESTDB_DATABASE }}
         run: |
           dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
             --no-build -c Release \
