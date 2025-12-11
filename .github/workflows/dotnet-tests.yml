@@ -3,7 +3,7 @@ name: .NET CI
 on:
   pull_request:
     branches:
-      - main
+      - "**"
   push:
     branches:
       - "**"
@@ -19,8 +19,9 @@ permissions:
 jobs:
 
   unit-tests:
-    name: Unit Tests (Job)
-    runs-on: ubuntu-22.04
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +29,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -52,13 +53,13 @@ jobs:
             --logger "trx;LogFileName=unit-tests.trx" \
             --filter "TestCategory!=Integration"
 
-      - name: Install trx2junit and set PATH
-        run: |
-          dotnet tool install -g trx2junit || echo "Already installed"
-          echo "PATH=$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
+      - name: Install trx2junit
+        run: dotnet tool install -g trx2junit || true
 
-      - name: Convert TRX → JUnit
-        run: trx2junit test-results/*.trx
+      - name: Convert TRX → JUnit XML
+        run: |
+          export PATH="$PATH:/home/runner/.dotnet/tools"
+          trx2junit test-results/*.trx
 
       - name: Upload unit test results
         uses: actions/upload-artifact@v4
@@ -75,40 +76,39 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
-      - name: Install xmllint  # Linux-værktøj til at læse og hente data fra XML-filer
+      - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install -y libxml2-utils
 
       - name: Add Unit Test Summary
         if: always()
         run: |
-          XML_FILE="test-results/unit-test-results.xml"
+          XML_FILE=$(ls test-results/*.xml | head -n1)
+
           if [ -f "$XML_FILE" ]; then
-            TOTAL=$(xmllint --xpath 'string(/testsuite/@tests)' "$XML_FILE")
-            FAILS=$(xmllint --xpath 'string(/testsuite/@failures)' "$XML_FILE")
-            SKIPPED=$(xmllint --xpath 'string(/testsuite/@skipped)' "$XML_FILE")
+            TOTAL=$(xmllint --xpath "string(/testsuites/@tests)" "$XML_FILE")
+            FAILS=$(xmllint --xpath "string(/testsuites/@failures)" "$XML_FILE")
+            SKIPPED=$(xmllint --xpath "string(/testsuites/@skipped)" "$XML_FILE")
             PASSED=$((TOTAL - FAILS - SKIPPED))
-      
+
             echo "### Unit Test Summary" >> $GITHUB_STEP_SUMMARY
-            echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
             echo "- Tests executed: $TOTAL" >> $GITHUB_STEP_SUMMARY
-            echo "- Passed: $PASSED ✅" >> $GITHUB_STEP_SUMMARY
-            echo "- Failed: $FAILS ❌" >> $GITHUB_STEP_SUMMARY
-            echo "- Skipped: $SKIPPED ⏭️" >> $GITHUB_STEP_SUMMARY
-            echo "- Artifact: [unit-test-results](test-results/unit-test-results.xml)" >> $GITHUB_STEP_SUMMARY
+            echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Failed: $FAILS" >> $GITHUB_STEP_SUMMARY
+            echo "- Skipped: $SKIPPED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "No unit test XML found" >> $GITHUB_STEP_SUMMARY
+            echo "No unit-test XML file found" >> $GITHUB_STEP_SUMMARY
           fi
 
 
-
   integration-tests:
-    name: Integration Tests (Job)
-    runs-on: ubuntu-22.04
+    name: Integration Tests
+    runs-on: ubuntu-latest
     needs: unit-tests
     timeout-minutes: 30
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request')
+      github.event_name == 'pull_request'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -116,7 +116,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -144,13 +144,13 @@ jobs:
             --logger "trx;LogFileName=integration-tests.trx" \
             --filter "TestCategory=Integration"
 
-      - name: Install trx2junit and set PATH
-        run: |
-          dotnet tool install -g trx2junit || echo "Already installed"
-          echo "PATH=$HOME/.dotnet/tools:$PATH" >> $GITHUB_ENV
+      - name: Install trx2junit
+        run: dotnet tool install -g trx2junit || true
 
-      - name: Convert TRX → JUnit
-        run: trx2junit test-results/*.trx
+      - name: Convert TRX → JUnit XML
+        run: |
+          export PATH="$PATH:/home/runner/.dotnet/tools"
+          trx2junit test-results/*.trx
 
       - name: Upload integration test results
         uses: actions/upload-artifact@v4
@@ -158,7 +158,7 @@ jobs:
           name: integration-test-results
           path: test-results/*.xml
 
-      - name: Report integration test results
+      - name: Report integration results
         if: always()
         uses: dorny/test-reporter@v1
         with:
@@ -166,28 +166,26 @@ jobs:
           path: test-results/*.xml
           reporter: java-junit
           fail-on-error: false
-          
-      - name: Install xmllint  # Linux-værktøj til at læse og hente data fra XML-filer
+
+      - name: Install xmllint
         run: sudo apt-get update && sudo apt-get install -y libxml2-utils
-        
+
       - name: Add Integration Test Summary
         if: always()
         run: |
-          XML_FILE="test-results/integration-test-results.xml"
+          XML_FILE=$(ls test-results/*.xml | head -n1)
+
           if [ -f "$XML_FILE" ]; then
-            TOTAL=$(xmllint --xpath 'string(/testsuite/@tests)' "$XML_FILE")
-            FAILS=$(xmllint --xpath 'string(/testsuite/@failures)' "$XML_FILE")
-            SKIPPED=$(xmllint --xpath 'string(/testsuite/@skipped)' "$XML_FILE")
+            TOTAL=$(xmllint --xpath "string(/testsuites/@tests)" "$XML_FILE")
+            FAILS=$(xmllint --xpath "string(/testsuites/@failures)" "$XML_FILE")
+            SKIPPED=$(xmllint --xpath "string(/testsuites/@skipped)" "$XML_FILE")
             PASSED=$((TOTAL - FAILS - SKIPPED))
 
             echo "### Integration Test Summary" >> $GITHUB_STEP_SUMMARY
-            echo "- Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
             echo "- Tests executed: $TOTAL" >> $GITHUB_STEP_SUMMARY
-            echo "- Passed: $PASSED ✅" >> $GITHUB_STEP_SUMMARY
-            echo "- Failed: $FAILS ❌" >> $GITHUB_STEP_SUMMARY
-            echo "- Skipped: $SKIPPED ⏭️" >> $GITHUB_STEP_SUMMARY
-            echo "- Artifact: [integration-test-results](test-results/*.xml)" >> $GITHUB_STEP_SUMMARY
+            echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Failed: $FAILS" >> $GITHUB_STEP_SUMMARY
+            echo "- Skipped: $SKIPPED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "No integration test XML found" >> $GITHUB_STEP_SUMMARY
+            echo "No integration test XML file found" >> $GITHUB_STEP_SUMMARY
           fi
-
