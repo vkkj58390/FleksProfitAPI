@@ -7,7 +7,7 @@ namespace FleksProfitAPI.Tests.Fakes
     {
         private readonly List<FcrRecord> _store = new();
 
-        public Task EnsureTableExistsAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task EnsureFcrRecordsTableExistsAsync(CancellationToken ct = default) => Task.CompletedTask;
 
         public Task<int> InsertFcrRecordsAsync(IEnumerable<FcrRecord> records, CancellationToken ct = default)
         {
@@ -26,7 +26,7 @@ namespace FleksProfitAPI.Tests.Fakes
             return Task.FromResult(result);
         }
 
-        public Task<DateTime?> GetLastHourUtcAsync(CancellationToken ct = default)
+        public Task<DateTime?> GetLastFcrHourUtcAsync(CancellationToken ct = default)
         {
             if (_store.Count == 0) return Task.FromResult<DateTime?>(null);
             return Task.FromResult<DateTime?>(_store.Max(r => r.HourUTC));

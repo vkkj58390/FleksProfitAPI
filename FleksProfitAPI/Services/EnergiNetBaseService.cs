@@ -31,7 +31,7 @@ namespace FleksProfitAPI.Services
                 using var resp = await _httpClient.GetAsync(url, cancellationToken);
                 resp.EnsureSuccessStatusCode();
 
-                var payload = await resp.Content.ReadFromJsonAsync<Models.EnergiNetResponse<T>>(cancellationToken: cancellationToken);
+                var payload = await resp.Content.ReadFromJsonAsync<Models.ResponseEnerginetApi<T>>(cancellationToken: cancellationToken);
                 var batch = payload?.Records ?? new List<T>();
 
                 if (batch.Count == 0)

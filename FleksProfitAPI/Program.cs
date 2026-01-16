@@ -22,7 +22,9 @@ builder.Services.AddScoped<IQuestDbRepository, QuestDbRepository>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<FcrDataService>();
 builder.Services.AddScoped<FcrRevenueService>();
-builder.Services.AddHostedService<EnergiNetSyncBackgroundService>();
+builder.Services.AddScoped<StromPriceDataService>();
+builder.Services.AddScoped<FcrProfitService>();
+builder.Services.AddHostedService<DbSyncBackgroundService>();
 
 // Controllers + Swagger + CORS
 builder.Services.AddControllers();

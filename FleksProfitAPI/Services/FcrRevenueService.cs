@@ -45,10 +45,13 @@ namespace FleksProfitAPI.Services
             // Timefiltrering
             var start = request.HourStart!.Value;
             var end = request.HourEnd!.Value;
-            bool fullDay = (start == 0 && end == 0);
+
+            // Når både start og end er 0 betyder det at brugeren ikke har angivet specifikke timer.
+            // Vi beregner derfor en gennemsnitspris over alle 24 timer, men indtægt beregnes ud fra HoursPerDay.
+            bool useDailyAveragePrice = (start == 0 && end == 0);
 
             List<FcrRecord> filtered = records;
-            if (!fullDay)
+            if (!useDailyAveragePrice)
             {
                 if (start < end)
                 {
