@@ -8,10 +8,10 @@ namespace FleksProfitAPI.Services
     public class StromPriceDataService
     {
         private readonly HttpClient _httpClient;
-        private readonly QuestDbRepository _repo;
+        private readonly IQuestDbRepository _repo;
         private readonly ILogger<StromPriceDataService> _logger;
 
-        public StromPriceDataService(HttpClient httpClient, QuestDbRepository repo, ILogger<StromPriceDataService> logger)
+        public StromPriceDataService(HttpClient httpClient, IQuestDbRepository repo, ILogger<StromPriceDataService> logger)
         {
             _httpClient = httpClient;
             _repo = repo;

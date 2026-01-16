@@ -5,9 +5,9 @@ namespace FleksProfitAPI.Services
 {
     public class FcrProfitService
     {
-        private readonly QuestDbRepository _repo;
+        private readonly IQuestDbRepository _repo;
 
-        public FcrProfitService(QuestDbRepository repo)
+        public FcrProfitService(IQuestDbRepository repo)
         {
             _repo = repo;
         }

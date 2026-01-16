@@ -116,9 +116,9 @@ namespace FleksProfitAPI.Services
         {
             try
             {
-                var lastHour = await _services.CreateScope().ServiceProvider
-                    .GetRequiredService<QuestDbRepository>()
-                    .GetLastElectricityPriceHourUtcAsync(priceArea, ct);
+                using var scope = _services.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<IQuestDbRepository>();
+                var lastHour = await repo.GetLastElectricityPriceHourUtcAsync(priceArea, ct);
 
                 DateTime start = lastHour == null ? new DateTime(2021, 1, 18) : lastHour.Value.AddHours(1);
                 DateTime end = DateTime.UtcNow;
