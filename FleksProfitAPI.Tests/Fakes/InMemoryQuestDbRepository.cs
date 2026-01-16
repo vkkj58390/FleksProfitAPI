@@ -34,6 +34,30 @@ namespace FleksProfitAPI.Tests.Fakes
 
         // Test helpers
         public void Seed(IEnumerable<FcrRecord> records) => _store.AddRange(records);
+
+
+
+        // Nedenstående er ikke implementeret, da de ikke bruges i de nuværende tests.
+        public Task EnsureElectricityPricesTableExistsAsync(CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<DateTime?> GetLastElectricityPriceHourUtcAsync(string priceArea, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> InsertElectricityPricesAsync(IEnumerable<ElectricityPriceRecord> records, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<ElectricityPriceRecord>> GetElectricityPricesAsync(DateTime startUtc, DateTime endUtc, string priceArea, CancellationToken ct = default)
+        {
+            throw new NotImplementedException();
+        }
+
         public IReadOnlyList<FcrRecord> All => _store;
     }
 }
