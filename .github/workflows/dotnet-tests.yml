@@ -1,0 +1,191 @@
+name: .NET CI
+
+on:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - "**"
+    paths-ignore:
+      - "README.md"
+      - ".github/**"
+      - "!.github/workflows/*"
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore FleksProfitAPI/FleksProfitAPI.sln
+
+      - name: Build
+        run: dotnet build FleksProfitAPI/FleksProfitAPI.sln --no-restore -c Release
+
+      - name: Run unit tests
+        run: |
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
+            --no-build -c Release \
+            --results-directory test-results \
+            --logger "trx;LogFileName=unit-tests.trx" \
+            --filter "TestCategory!=Integration"
+
+      - name: Install trx2junit
+        run: dotnet tool install -g trx2junit || true
+
+      - name: Convert TRX → JUnit XML
+        run: |
+          export PATH="$PATH:/home/runner/.dotnet/tools"
+          trx2junit test-results/*.trx
+
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: test-results/*.xml
+
+      - name: Report unit test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results
+          path: test-results/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+
+      - name: Add Unit Test Summary
+        if: always()
+        run: |
+          XML_FILE=$(ls test-results/*.xml | head -n1)
+
+          if [ -f "$XML_FILE" ]; then
+            TOTAL=$(xmllint --xpath "string(/testsuites/@tests)" "$XML_FILE")
+            FAILS=$(xmllint --xpath "string(/testsuites/@failures)" "$XML_FILE")
+            SKIPPED=$(xmllint --xpath "string(/testsuites/@skipped)" "$XML_FILE")
+            PASSED=$((TOTAL - FAILS - SKIPPED))
+
+            echo "### Unit Test Summary" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests executed: $TOTAL" >> $GITHUB_STEP_SUMMARY
+            echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Failed: $FAILS" >> $GITHUB_STEP_SUMMARY
+            echo "- Skipped: $SKIPPED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No unit-test XML file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    timeout-minutes: 30
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore FleksProfitAPI/FleksProfitAPI.sln
+
+      - name: Build
+        run: dotnet build FleksProfitAPI/FleksProfitAPI.sln --no-restore -c Release
+
+      - name: Run integration tests
+        env:
+          TEST_QUESTDB_USER: ${{ secrets.TEST_QUESTDB_USER }}
+          TEST_QUESTDB_PASSWORD: ${{ secrets.TEST_QUESTDB_PASSWORD }}
+          TEST_QUESTDB_DATABASE: ${{ secrets.TEST_QUESTDB_DATABASE }}
+        run: |
+          dotnet test ./FleksProfitAPI.Tests/FleksProfitAPI.Tests.csproj \
+            --no-build -c Release \
+            --results-directory test-results \
+            --logger "trx;LogFileName=integration-tests.trx" \
+            --filter "TestCategory=Integration"
+
+      - name: Install trx2junit
+        run: dotnet tool install -g trx2junit || true
+
+      - name: Convert TRX → JUnit XML
+        run: |
+          export PATH="$PATH:/home/runner/.dotnet/tools"
+          trx2junit test-results/*.trx
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test-results/*.xml
+
+      - name: Report integration results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Integration Test Results
+          path: test-results/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+
+      - name: Add Integration Test Summary
+        if: always()
+        run: |
+          XML_FILE=$(ls test-results/*.xml | head -n1)
+
+          if [ -f "$XML_FILE" ]; then
+            TOTAL=$(xmllint --xpath "string(/testsuites/@tests)" "$XML_FILE")
+            FAILS=$(xmllint --xpath "string(/testsuites/@failures)" "$XML_FILE")
+            SKIPPED=$(xmllint --xpath "string(/testsuites/@skipped)" "$XML_FILE")
+            PASSED=$((TOTAL - FAILS - SKIPPED))
+
+            echo "### Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests executed: $TOTAL" >> $GITHUB_STEP_SUMMARY
+            echo "- Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Failed: $FAILS" >> $GITHUB_STEP_SUMMARY
+            echo "- Skipped: $SKIPPED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No integration test XML file found" >> $GITHUB_STEP_SUMMARY
+          fi

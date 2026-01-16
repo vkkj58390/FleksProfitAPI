@@ -27,11 +27,12 @@ namespace FleksProfitAPI.Services
             try
             {
                 using var scope = _services.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
+                var repo = scope.ServiceProvider.GetRequiredService<IQuestDbRepository>();
                 await repo.EnsureFcrRecordsTableExistsAsync(stoppingToken);
+
                 var fcrService = scope.ServiceProvider.GetRequiredService<FcrDataService>();
 
-                var lastHour = await repo.GetLastHourUtcAsync(stoppingToken);
+                var lastHour = await repo.GetLastFcrHourUtcAsync(stoppingToken);
                 if (lastHour == null)
                 {
                     var start = new DateTime(2020, 1, 1);
@@ -59,11 +60,13 @@ namespace FleksProfitAPI.Services
                     // senere kan man tilføje flere:
                     // var afrrService = scope.ServiceProvider.GetRequiredService<AfrrService>();
                     
-                    var repo = scope.ServiceProvider.GetRequiredService<QuestDbRepository>();
+
+                    var repo = scope.ServiceProvider.GetRequiredService<IQuestDbRepository>();
                     await repo.EnsureFcrRecordsTableExistsAsync(); // sikrer tabel hver cyklus
                     
                     // === FCR ===
                     await SyncEnerginetDatasetAsync("FCR", repo, fcrService, stoppingToken);
+
 
                     // === aFRR (eksempel, hvis man tilføjer senere) ===
                     // await SyncDatasetAsync("aFRR", db, afrrService, stoppingToken);
@@ -85,11 +88,11 @@ namespace FleksProfitAPI.Services
             _logger.LogInformation("DB Sync baggrundsservice stoppet.");
         }
 
-        private async Task SyncEnerginetDatasetAsync(string name, QuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
+        private async Task SyncEnerginetDatasetAsync(string name, IQuestDbRepository repo, FcrDataService service, CancellationToken stoppingToken)
         {
             _logger.LogInformation("Starter synkronisering for {Dataset}", name);
 
-            var lastHourUtc = await repo.GetLastHourUtcAsync(stoppingToken);
+            var lastHourUtc = await repo.GetLastFcrHourUtcAsync(stoppingToken);
 
             DateTime start;
             DateTime end = DateTime.UtcNow;

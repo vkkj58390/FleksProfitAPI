@@ -9,9 +9,9 @@ namespace FleksProfitAPI.Controllers
     public class FcrDataController : ControllerBase
     {
         private readonly FcrDataService _fcrService;
-        private readonly QuestDbRepository _repo;
+        private readonly IQuestDbRepository _repo;
 
-        public FcrDataController(FcrDataService fcrService, QuestDbRepository repo)
+        public FcrDataController(FcrDataService fcrService, IQuestDbRepository repo)
         {
             _fcrService = fcrService;
             _repo = repo;
