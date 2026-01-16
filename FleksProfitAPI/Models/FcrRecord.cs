@@ -4,10 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace FleksProfitAPI.Models
 {
     public class FcrRecord
-    {
-        [Key]
-        public int Id { get; set; }  // Surrogate key
-            
+    {           
         [Required]
         public DateTime HourUTC { get; set; }
 
