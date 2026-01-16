@@ -34,12 +34,12 @@ namespace FleksProfitAPI.Services
                 return new ProfitResult
                 {
                     AverageFcrPriceDKKPerMWHour = 0,
-                    FcrRevenueDKK = 0,
+                    MonthlyFcrRevenueDKK = 0,
                     AverageBuyPriceDKKPerKWh = 0,
                     AverageSellSpotPriceDKKPerKWh = 0,
                     ArbitrageProfitGrossDKK = 0,
                     AggregatorFeeDKK = 0,
-                    TotalNetProfitDKK = 0
+                    MonthlyTotalNetProfitDKK = 0
                 };
             }
 
@@ -107,12 +107,12 @@ namespace FleksProfitAPI.Services
             return new ProfitResult
             {
                 AverageFcrPriceDKKPerMWHour = avgFcrPrice,
-                FcrRevenueDKK = fcrRevenue,
+                MonthlyFcrRevenueDKK = fcrRevenue,
                 AverageBuyPriceDKKPerKWh = avgBuyPrice,
                 AverageSellSpotPriceDKKPerKWh = avgSellSpotPrice,
                 ArbitrageProfitGrossDKK = arbitrageProfitGross,
                 AggregatorFeeDKK = aggregatorFee,
-                TotalNetProfitDKK = netTotal
+                MonthlyTotalNetProfitDKK = netTotal
             };
         }
     }
