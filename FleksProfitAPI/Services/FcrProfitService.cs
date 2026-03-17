@@ -12,6 +12,25 @@ namespace FleksProfitAPI.Services
             _repo = repo;
         }
 
+        private static readonly TimeZoneInfo DkTimeZone = ResolveDanishTimeZone();
+
+        private static TimeZoneInfo ResolveDanishTimeZone()
+        {
+            // Windows
+            try { return TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"); }
+            catch (TimeZoneNotFoundException) { /* ignore */ }
+
+            // Linux/macOS
+            return TimeZoneInfo.FindSystemTimeZoneById("Europe/Copenhagen");
+        }
+
+        private static DateTime UtcToDk(DateTime utcLike)
+        {
+            // Records from QuestDB typically come back as Kind=Unspecified; treat them as UTC by convention.
+            var utc = DateTime.SpecifyKind(utcLike, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, DkTimeZone);
+        }
+
         public async Task<ProfitResult> CalculateProfitAsync(ProfitRequest request)
         {
             // Sidste hele måned
@@ -56,12 +75,23 @@ namespace FleksProfitAPI.Services
                 if (startHour < endHour)
                 {
                     fcrFiltered = fcrFiltered.Where(r => r.HourDK.Hour >= startHour && r.HourDK.Hour < endHour);
-                    priceFiltered = priceFiltered.Where(p => p.HourUTC.Hour >= startHour && p.HourUTC.Hour < endHour);
+
+                    // Convert electricity price timestamps to DK-local time before hour-of-day filtering
+                    priceFiltered = priceFiltered.Where(p =>
+                    {
+                        var dkHour = UtcToDk(p.HourUTC).Hour;
+                        return dkHour >= startHour && dkHour < endHour;
+                    });
                 }
                 else
                 {
                     fcrFiltered = fcrFiltered.Where(r => r.HourDK.Hour >= startHour || r.HourDK.Hour < endHour);
-                    priceFiltered = priceFiltered.Where(p => p.HourUTC.Hour >= startHour || p.HourUTC.Hour < endHour);
+
+                    priceFiltered = priceFiltered.Where(p =>
+                    {
+                        var dkHour = UtcToDk(p.HourUTC).Hour;
+                        return dkHour >= startHour || dkHour < endHour;
+                    });
                 }
             }
 
