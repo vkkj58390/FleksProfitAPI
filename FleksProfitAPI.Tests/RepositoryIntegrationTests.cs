@@ -78,7 +78,7 @@ public class RepositoryIntegrationTests
         Assert.IsNotNull(_connString, "Connection string not initialized");
         var ds = new NpgsqlDataSourceBuilder(_connString!).Build();
         var repo = new QuestDbRepository(ds);
-        repo.EnsureTableExistsAsync().GetAwaiter().GetResult();
+        repo.EnsureFcrRecordsTableExistsAsync().GetAwaiter().GetResult();
 
         var t0 = new DateTime(2025, 1, 1, 0, 0, 0);
         var input = new List<FcrRecord>
